@@ -21,11 +21,18 @@ public class WebSocket: NSObject {
     private var nioWebSocket: INIOWebSocket?
     private var isStarted = false
 
-    public var state: WebSocketState = .disconnected(error: WebSocketState.DisconnectError.notStarted) {
-        didSet {
+    private var _state: WebSocketState = .disconnected(error: WebSocketState.DisconnectError.notStarted)
+    public var state: WebSocketState {
+        get {
+            queue.sync {
+                _state
+            }
+        }
+        set {
             queue.async { [weak self] in
-                self.flatMap {
-                    $0.delegate?.didUpdate(state: $0.state)
+                self?._state = newValue
+                DispatchQueue.global(qos: .utility).async {
+                    self?.delegate?.didUpdate(state: newValue)
                 }
             }
         }

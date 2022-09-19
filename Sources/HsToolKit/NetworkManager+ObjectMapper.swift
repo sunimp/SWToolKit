@@ -1,11 +1,12 @@
+import Foundation
 import Alamofire
 import ObjectMapper
 import RxSwift
 
 extension NetworkManager {
 
-    public func single<T: ImmutableMappable>(request: DataRequest) -> Single<T> {
-        single(request: request, mapper: ObjectMapper<T>())
+    public func single<T: ImmutableMappable>(request: DataRequest, sync: Bool = false, postDelay: TimeInterval? = nil) -> Single<T> {
+        single(request: request, mapper: ObjectMapper<T>(), sync: sync, postDelay: postDelay)
     }
 
     public func single<T: ImmutableMappable>(request: DataRequest) -> Single<[T]> {

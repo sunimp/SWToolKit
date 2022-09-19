@@ -12,19 +12,38 @@ public class NetworkManager {
         self.logger = logger
     }
 
-    public func single<Mapper: IApiMapper>(request: DataRequest, mapper: Mapper) -> Single<Mapper.T> {
+    public func single<Mapper: IApiMapper>(request: DataRequest, mapper: Mapper, sync: Bool = false, postDelay: TimeInterval? = nil) -> Single<Mapper.T> {
         let serializer = JsonMapperResponseSerializer<Mapper>(mapper: mapper, logger: logger)
 
         return Single<Mapper.T>.create { observer in
-            let requestReference = request.response(queue: DispatchQueue.global(qos: .background), responseSerializer: serializer)
-            { response in
+            var semaphore: DispatchSemaphore?
+
+            if sync {
+                semaphore = DispatchSemaphore(value: 0)
+            }
+
+            let startTime = Date().timeIntervalSince1970
+
+            let requestReference = request.response(queue: DispatchQueue.global(qos: .background), responseSerializer: serializer) { response in
                 switch response.result {
                 case .success(let result):
                     observer(.success(result))
                 case .failure(let error):
                     observer(.error(NetworkManager.unwrap(error: error)))
                 }
+
+                if let postDelay = postDelay {
+                    let requestTime = Date().timeIntervalSince1970 - startTime
+
+                    if requestTime < postDelay {
+                        Thread.sleep(forTimeInterval: postDelay - requestTime)
+                    }
+                }
+
+                semaphore?.signal()
             }
+
+            semaphore?.wait()
 
             return Disposables.create {
                 requestReference.cancel()
@@ -42,7 +61,11 @@ public class NetworkManager {
                 return Disposables.create()
             }
 
-            var request = manager.session.request(url, method: method, parameters: parameters, encoding: encoding, headers: headers, interceptor: interceptor)
+            var request = manager
+                    .session
+                    .request(url, method: method, parameters: parameters, encoding: encoding, headers: headers, interceptor: interceptor)
+                    .validate(statusCode: 200..<400)
+                    .validate(contentType: ["application/json"])
 
             if let behavior = responseCacherBehavior {
                 request = request.cacheResponse(using: ResponseCacher(behavior: behavior))
@@ -95,7 +118,7 @@ extension NetworkManager {
             case .success(let result):
                 logger?.debug("API IN [\(request.id)]\n\(result)\n")
             case .failure(let error):
-                logger?.error("API IN [\(request.id)]\n\(NetworkManager.unwrap(error: error))\n")
+                logger?.error("API IN [\(request.id)] \(request.request.map { "\($0)" } ?? "")\n\(NetworkManager.unwrap(error: error))\n")
             }
         }
 
@@ -117,6 +140,16 @@ extension NetworkManager {
         }
 
         func serialize(request: URLRequest?, response: HTTPURLResponse?, data: Data?, error: Error?) throws -> Mapper.T {
+            if let error = error as? AFError {
+                // Handle failure Http status codes
+                // By default handle only wrong status code, otherwise fallback to 400 'Bad request' code
+                if case let .responseValidationFailed(reason) = error,
+                   case let .unacceptableStatusCode(code) = reason {
+                    throw RequestError.invalidResponse(statusCode: code, data: data)
+                } else {
+                    throw error
+                }
+            }
             guard let response = response else {
                 throw RequestError.noResponse(reason: error?.localizedDescription)
             }
