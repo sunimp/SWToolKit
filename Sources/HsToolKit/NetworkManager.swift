@@ -86,6 +86,43 @@ public class NetworkManager {
         }
     }
 
+    public func single(request: DataRequest, sync: Bool = false, postDelay: TimeInterval? = nil) -> Single<Data> {
+        Single<Data>.create { observer in
+            var semaphore: DispatchSemaphore?
+
+            if sync {
+                semaphore = DispatchSemaphore(value: 0)
+            }
+
+            let startTime = Date().timeIntervalSince1970
+
+            let requestReference = request.response(queue: DispatchQueue.global(qos: .background)) { response in
+                switch response.result {
+                case .success(let result):
+                    observer(.success(result ?? Data()))
+                case .failure(let error):
+                    observer(.error(NetworkManager.unwrap(error: error)))
+                }
+
+                if let postDelay = postDelay {
+                    let requestTime = Date().timeIntervalSince1970 - startTime
+
+                    if requestTime < postDelay {
+                        Thread.sleep(forTimeInterval: postDelay - requestTime)
+                    }
+                }
+
+                semaphore?.signal()
+            }
+
+            semaphore?.wait()
+
+            return Disposables.create {
+                requestReference.cancel()
+            }
+        }
+    }
+
 }
 
 extension NetworkManager {
