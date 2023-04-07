@@ -1,17 +1,17 @@
+import Foundation
+import Combine
 import NIO
 import NIOHTTP1
 import NIOWebSocket
-import Foundation
-import RxSwift
 
 public class WebSocket: NSObject {
     public weak var delegate: IWebSocketDelegate?
 
-    private var disposeBag = DisposeBag()
+    private var cancellables = Set<AnyCancellable>()
     private var logger: Logger?
 
     private let queue = DispatchQueue(label: "websocket-delegate-queue", qos: .background)
-    private let reachabilityManager: IReachabilityManager
+    private let reachabilityManager: ReachabilityManager
 
     private let url: URL
     private let auth: String?
@@ -38,7 +38,7 @@ public class WebSocket: NSObject {
         }
     }
 
-    public init(url: URL, reachabilityManager: IReachabilityManager, auth: String?, sessionRequestTimeout: TimeInterval = 20,
+    public init(url: URL, reachabilityManager: ReachabilityManager, auth: String?, sessionRequestTimeout: TimeInterval = 20,
                 maxFrameSize: Int = 1 << 27, logger: Logger? = nil) {
         self.url = url
         self.reachabilityManager = reachabilityManager
@@ -48,37 +48,33 @@ public class WebSocket: NSObject {
 
         super.init()
 
-        reachabilityManager.reachabilityObservable
-            .observeOn(ConcurrentDispatchQueueScheduler(qos: .userInitiated))
-            .subscribe(onNext: { [weak self] _ in
-                if reachabilityManager.isReachable {
-                    self?.connect()
-                } else {
+        reachabilityManager.$isReachable
+                .sink { [weak self] isReachable in
+                    if isReachable {
+                        self?.connect()
+                    } else {
+                        self?.disconnect(code: .normalClosure, error: WebSocketState.DisconnectError.socketDisconnected(reason: .networkNotReachable))
+                    }
+                }
+                .store(in: &cancellables)
+
+        reachabilityManager.connectionTypeChangedPublisher
+                .sink { [weak self] in
+                    guard case .connected = self?.state else {
+                        return
+                    }
+
                     self?.disconnect(code: .normalClosure, error: WebSocketState.DisconnectError.socketDisconnected(reason: .networkNotReachable))
+                    self?.connect()
                 }
-            })
-            .disposed(by: disposeBag)
+                .store(in: &cancellables)
 
-        reachabilityManager.connectionTypeUpdatedObservable
-            .observeOn(ConcurrentDispatchQueueScheduler(qos: .userInitiated))
-            .subscribe(onNext: { [weak self] _ in
-                guard case .connected = self?.state else {
-                    return
+        BackgroundModeObserver.shared.foregroundFromExpiredBackgroundPublisher
+                .sink { [weak self] in
+                    self?.disconnect(code: .normalClosure, error: WebSocketState.DisconnectError.socketDisconnected(reason: .appInBackgroundMode))
+                    self?.connect()
                 }
-
-                self?.disconnect(code: .normalClosure, error: WebSocketState.DisconnectError.socketDisconnected(reason: .networkNotReachable))
-                self?.connect()
-            })
-            .disposed(by: disposeBag)
-
-        BackgroundModeObserver.shared
-            .foregroundFromExpiredBackgroundObservable
-            .observeOn(ConcurrentDispatchQueueScheduler(qos: .userInitiated))
-            .subscribe(onNext: { [weak self] _ in
-                self?.disconnect(code: .normalClosure, error: WebSocketState.DisconnectError.socketDisconnected(reason: .appInBackgroundMode))
-                self?.connect()
-            })
-            .disposed(by: disposeBag)
+                .store(in: &cancellables)
     }
 
     deinit {
@@ -102,7 +98,7 @@ public class WebSocket: NSObject {
         logger?.debug("Connecting to \(url)")
 
         var headers = HTTPHeaders()
-        
+
         if let auth = auth {
             let basicAuth = Data(":\(auth)".utf8).base64EncodedString()
             headers.add(name: "Authorization", value: "Basic \(basicAuth)")
@@ -156,7 +152,7 @@ public class WebSocket: NSObject {
         logger?.debug("WebSocket connected \(webSocket)")
         state = .connected
     }
-    
+
     private func verifyConnection() throws {
         switch state {
         case .connected: ()

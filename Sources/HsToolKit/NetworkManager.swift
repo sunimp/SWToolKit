@@ -1,205 +1,121 @@
-import RxSwift
-import Alamofire
 import Foundation
+import Alamofire
 
 public class NetworkManager {
+    private static var index = 1
+
+    // todo: make session private, remove all external usages
     public let session: Session
+    private let interRequestInterval: TimeInterval?
     private var logger: Logger?
 
-    public init(logger: Logger? = nil) {
-        let networkLogger = NetworkLogger(logger: logger)
-        session = Session(eventMonitors: [networkLogger])
+    private var lastRequestTime: TimeInterval = 0
+
+    public init(interRequestInterval: TimeInterval? = nil, logger: Logger? = nil) {
+        session = Session()
+        self.interRequestInterval = interRequestInterval
         self.logger = logger
     }
 
-    public func single<Mapper: IApiMapper>(request: DataRequest, mapper: Mapper, sync: Bool = false, postDelay: TimeInterval? = nil) -> Single<Mapper.T> {
-        let serializer = JsonMapperResponseSerializer<Mapper>(mapper: mapper, logger: logger)
+    public func fetchData(
+            url: URLConvertible, method: HTTPMethod = .get, parameters: Parameters = [:], encoding: ParameterEncoding = URLEncoding.default,
+            headers: HTTPHeaders? = nil, interceptor: RequestInterceptor? = nil, responseCacherBehavior: ResponseCacher.Behavior? = nil,
+            contentType: String? = nil
+    ) async throws -> Data {
+        if let interRequestInterval {
+            let now = Date().timeIntervalSince1970
 
-        return Single<Mapper.T>.create { observer in
-            var semaphore: DispatchSemaphore?
-
-            if sync {
-                semaphore = DispatchSemaphore(value: 0)
+            if lastRequestTime + interRequestInterval <= now {
+                lastRequestTime = now
+            } else {
+                lastRequestTime += interRequestInterval
+                try await Task.sleep(nanoseconds: UInt64((lastRequestTime - now) * 1_000_000_000))
             }
+        }
 
-            let startTime = Date().timeIntervalSince1970
+        var request = session
+                .request(url, method: method, parameters: parameters, encoding: encoding, headers: headers, interceptor: interceptor)
+                .validate(statusCode: 200..<400)
 
-            let requestReference = request.response(queue: DispatchQueue.global(qos: .background), responseSerializer: serializer) { response in
-                switch response.result {
-                case .success(let result):
-                    observer(.success(result))
-                case .failure(let error):
-                    observer(.error(NetworkManager.unwrap(error: error)))
-                }
+        if let contentType {
+            request = request.validate(contentType: [contentType])
+        }
 
-                if let postDelay = postDelay {
-                    let requestTime = Date().timeIntervalSince1970 - startTime
+        if let responseCacherBehavior {
+            request = request.cacheResponse(using: ResponseCacher(behavior: responseCacherBehavior))
+        }
 
-                    if requestTime < postDelay {
-                        Thread.sleep(forTimeInterval: postDelay - requestTime)
-                    }
-                }
-
-                semaphore?.signal()
-            }
-
-            semaphore?.wait()
-
-            return Disposables.create {
-                requestReference.cancel()
-            }
+        do {
+            return try await request.serializingData(automaticallyCancelling: true).value
+        } catch {
+            throw Self.unwrap(error: error)
         }
     }
 
-    public func single<Mapper: IApiMapper>(url: URLConvertible, method: HTTPMethod, parameters: Parameters, mapper: Mapper, encoding: ParameterEncoding = URLEncoding.default,
-                                           headers: HTTPHeaders? = nil, interceptor: RequestInterceptor? = nil, responseCacherBehavior: ResponseCacher.Behavior? = nil) -> Single<Mapper.T> {
-        let serializer = JsonMapperResponseSerializer<Mapper>(mapper: mapper, logger: logger)
+    public func fetchJson(
+            url: URLConvertible, method: HTTPMethod = .get, parameters: Parameters = [:], encoding: ParameterEncoding = URLEncoding.default,
+            headers: HTTPHeaders? = nil, interceptor: RequestInterceptor? = nil, responseCacherBehavior: ResponseCacher.Behavior? = nil
+    ) async throws -> Any {
+        let uuid = Self.index
+        Self.index += 1
 
-        return Single<Mapper.T>.create { [weak self] observer in
-            guard let manager = self else {
-                observer(.error(NetworkManager.RequestError.disposed))
-                return Disposables.create()
+        logger?.debug("API OUT [\(uuid)]: \(method.rawValue) \(url) \(parameters)")
+
+        let data = try await fetchData(
+                url: url, method: method, parameters: parameters, encoding: encoding, headers: headers, interceptor: interceptor,
+                responseCacherBehavior: responseCacherBehavior, contentType: "application/json"
+        )
+
+        let json = try JSONSerialization.jsonObject(with: data, options: .allowFragments)
+
+        logger?.debug("API IN [\(uuid)]: \(json)")
+
+        return json
+    }
+
+    // todo: remove this method, used for back-compatibility only
+    func fetchData(request: DataRequest, responseCacherBehavior: ResponseCacher.Behavior? = nil, contentType: String? = nil) async throws -> Data {
+        if let interRequestInterval {
+            let now = Date().timeIntervalSince1970
+
+            if lastRequestTime + interRequestInterval <= now {
+                lastRequestTime = now
+            } else {
+                lastRequestTime += interRequestInterval
+                try await Task.sleep(nanoseconds: UInt64((lastRequestTime - now) * 1_000_000_000))
             }
+        }
 
-            var request = manager
-                    .session
-                    .request(url, method: method, parameters: parameters, encoding: encoding, headers: headers, interceptor: interceptor)
-                    .validate(statusCode: 200..<400)
-                    .validate(contentType: ["application/json"])
+        var request = request.validate(statusCode: 200..<400)
 
-            if let behavior = responseCacherBehavior {
-                request = request.cacheResponse(using: ResponseCacher(behavior: behavior))
-            }
+        if let contentType {
+            request = request.validate(contentType: [contentType])
+        }
 
-            let requestReference = request.response(queue: DispatchQueue.global(qos: .background), responseSerializer: serializer) { response in
-                switch response.result {
-                case .success(let result):
-                    observer(.success(result))
-                case .failure(let error):
-                    observer(.error(NetworkManager.unwrap(error: error)))
-                }
-            }
+        if let responseCacherBehavior {
+            request = request.cacheResponse(using: ResponseCacher(behavior: responseCacherBehavior))
+        }
 
-            return Disposables.create {
-                requestReference.cancel()
-            }
+        do {
+            return try await request.serializingData(automaticallyCancelling: true).value
+        } catch {
+            throw Self.unwrap(error: error)
         }
     }
 
-    public func single(request: DataRequest, sync: Bool = false, postDelay: TimeInterval? = nil) -> Single<Data> {
-        Single<Data>.create { observer in
-            var semaphore: DispatchSemaphore?
+    // todo: remove this method, used for back-compatibility only
+    func fetchJson(request: DataRequest, responseCacherBehavior: ResponseCacher.Behavior? = nil) async throws -> Any {
+        let uuid = Self.index
+        Self.index += 1
 
-            if sync {
-                semaphore = DispatchSemaphore(value: 0)
-            }
+        logger?.debug("API OUT [\(uuid)]: \(request)")
 
-            let startTime = Date().timeIntervalSince1970
+        let data = try await fetchData(request: request, responseCacherBehavior: responseCacherBehavior, contentType: "application/json")
+        let json = try JSONSerialization.jsonObject(with: data, options: .allowFragments)
 
-            let requestReference = request.response(queue: DispatchQueue.global(qos: .background)) { response in
-                switch response.result {
-                case .success(let result):
-                    observer(.success(result ?? Data()))
-                case .failure(let error):
-                    observer(.error(NetworkManager.unwrap(error: error)))
-                }
+        logger?.debug("API IN [\(uuid)]: \(json)")
 
-                if let postDelay = postDelay {
-                    let requestTime = Date().timeIntervalSince1970 - startTime
-
-                    if requestTime < postDelay {
-                        Thread.sleep(forTimeInterval: postDelay - requestTime)
-                    }
-                }
-
-                semaphore?.signal()
-            }
-
-            semaphore?.wait()
-
-            return Disposables.create {
-                requestReference.cancel()
-            }
-        }
-    }
-
-}
-
-extension NetworkManager {
-
-    class NetworkLogger: EventMonitor {
-        private var logger: Logger?
-
-        let queue = DispatchQueue(label: "Network Logger", qos: .background)
-
-        init(logger: Logger?) {
-            self.logger = logger
-        }
-
-        func requestDidResume(_ request: Request) {
-            var parametersLog = ""
-
-            if let httpBody = request.request?.httpBody, let json = try? JSONSerialization.jsonObject(with: httpBody), let data = try? JSONSerialization.data(withJSONObject: json, options: [.sortedKeys, .prettyPrinted]), let string = String(data: data, encoding: .utf8) {
-                parametersLog = "\n\(string)"
-            }
-
-            logger?.debug("API OUT [\(request.id)]\n\(request)\(parametersLog)\n")
-        }
-
-        func requestIsRetrying(_ request: Request) {
-            logger?.warning("API RETRY: \(request.id)")
-        }
-
-        func request<Value>(_ request: DataRequest, didParseResponse response: DataResponse<Value, AFError>) {
-            switch response.result {
-            case .success(let result):
-                logger?.debug("API IN [\(request.id)]\n\(result)\n")
-            case .failure(let error):
-                logger?.error("API IN [\(request.id)] \(request.request.map { "\($0)" } ?? "")\n\(NetworkManager.unwrap(error: error))\n")
-            }
-        }
-
-    }
-
-}
-
-extension NetworkManager {
-
-    class JsonMapperResponseSerializer<Mapper: IApiMapper>: ResponseSerializer {
-        private let mapper: Mapper
-        private var logger: Logger?
-
-        private let jsonSerializer = JSONResponseSerializer()
-
-        init(mapper: Mapper, logger: Logger?) {
-            self.mapper = mapper
-            self.logger = logger
-        }
-
-        func serialize(request: URLRequest?, response: HTTPURLResponse?, data: Data?, error: Error?) throws -> Mapper.T {
-            if let error = error as? AFError {
-                // Handle failure Http status codes
-                // By default handle only wrong status code, otherwise fallback to 400 'Bad request' code
-                if case let .responseValidationFailed(reason) = error,
-                   case let .unacceptableStatusCode(code) = reason {
-                    throw RequestError.invalidResponse(statusCode: code, data: data)
-                } else {
-                    throw error
-                }
-            }
-            guard let response = response else {
-                throw RequestError.noResponse(reason: error?.localizedDescription)
-            }
-
-            let json = try? jsonSerializer.serialize(request: request, response: response, data: data, error: nil)
-
-            if let json = json {
-                logger?.verbose("JSON Response:\n\(json)")
-            }
-
-            return try mapper.map(statusCode: response.statusCode, data: json)
-        }
-
+        return json
     }
 
 }
@@ -214,19 +130,4 @@ extension NetworkManager {
         return error
     }
 
-}
-
-extension NetworkManager {
-
-    public enum RequestError: Error {
-        case invalidResponse(statusCode: Int, data: Any?)
-        case noResponse(reason: String?)
-        case disposed
-    }
-
-}
-
-public protocol IApiMapper {
-    associatedtype T
-    func map(statusCode: Int, data: Any?) throws -> T
 }

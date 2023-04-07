@@ -1,57 +1,50 @@
+import Foundation
+import Combine
 import Alamofire
-import RxSwift
-
-public protocol IReachabilityManager {
-    var isReachable: Bool { get }
-    var reachabilityObservable: Observable<Bool> { get }
-    var connectionTypeUpdatedObservable: Observable<Void> { get }
-}
+import HsExtensions
 
 public class ReachabilityManager {
     private let manager: NetworkReachabilityManager?
 
-    private(set) public var isReachable: Bool
-    private(set) public var connectionType: NetworkReachabilityManager.NetworkReachabilityStatus.ConnectionType?
-    private let reachabilitySubject = PublishSubject<Bool>()
-    private let connectionTypeUpdatedSubject = PublishSubject<Void>()
+    @DistinctPublished private(set) public var isReachable: Bool = false
+    private let connectionTypeChangedSubject = PassthroughSubject<Void, Never>()
+
+    private var lastConnectionType: NetworkReachabilityManager.NetworkReachabilityStatus.ConnectionType?
 
     public init() {
         manager = NetworkReachabilityManager()
 
-        isReachable = manager?.isReachable ?? false
+        if let manager {
+            isReachable = manager.isReachable
 
-        manager?.startListening { [weak self] _ in
-            self?.onUpdateStatus()
+            manager.startListening { [weak self] status in
+                self?.onUpdate(status: status)
+            }
         }
     }
 
-    private func onUpdateStatus() {
-        let newReachable = manager?.isReachable ?? false
+    private func onUpdate(status: NetworkReachabilityManager.NetworkReachabilityStatus) {
+        switch status {
+        case .reachable(let connectionType):
+            isReachable = true
 
-        if isReachable != newReachable {
-            isReachable = newReachable
-            reachabilitySubject.onNext(newReachable)
-        }
+            if let lastConnectionType, connectionType != lastConnectionType {
+                connectionTypeChangedSubject.send()
+            }
 
-        if let status = manager?.status, case .reachable(let connectionType) = status, self.connectionType != connectionType {
-            self.connectionType = connectionType
-            connectionTypeUpdatedSubject.onNext(())
+            lastConnectionType = connectionType
+        default:
+            isReachable = false
+            lastConnectionType = nil
         }
+    }
+
+    public var connectionTypeChangedPublisher: AnyPublisher<Void, Never> {
+        connectionTypeChangedSubject.eraseToAnyPublisher()
     }
 
 }
 
-extension ReachabilityManager: IReachabilityManager {
-
-    public var reachabilityObservable: Observable<Bool> {
-        reachabilitySubject.asObservable()
-    }
-
-    public var connectionTypeUpdatedObservable: Observable<Void> {
-        connectionTypeUpdatedSubject.asObservable()
-    }
-
-}
 
 extension ReachabilityManager {
 

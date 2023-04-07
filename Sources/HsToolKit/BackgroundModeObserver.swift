@@ -1,16 +1,23 @@
-import RxSwift
 import Foundation
+import Combine
 import UIKit
 
 public class BackgroundModeObserver {
     public static let shared = BackgroundModeObserver()
 
-    private let foregroundFromExpiredBackgroundSubject = PublishSubject<Void>()
+    private let foregroundFromExpiredBackgroundSubject = PassthroughSubject<Void, Never>()
     private var backgroundTask: UIBackgroundTaskIdentifier = UIBackgroundTaskIdentifier.invalid
 
+    private var cancellables = Set<AnyCancellable>()
+
     init() {
-        NotificationCenter.default.addObserver(self, selector: #selector(appCameToBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(appCameToForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+        NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
+                .sink { [weak self] _ in self?.appCameToBackground() }
+                .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
+                .sink { [weak self] _ in self?.appCameToForeground() }
+                .store(in: &cancellables)
     }
 
     @objc private func appCameToBackground() {
@@ -25,12 +32,12 @@ public class BackgroundModeObserver {
             UIApplication.shared.endBackgroundTask(backgroundTask)
             backgroundTask = UIBackgroundTaskIdentifier.invalid
         } else {
-            foregroundFromExpiredBackgroundSubject.onNext(())
+            foregroundFromExpiredBackgroundSubject.send()
         }
     }
 
-    public var foregroundFromExpiredBackgroundObservable: Observable<Void> {
-        foregroundFromExpiredBackgroundSubject.asObservable()
+    public var foregroundFromExpiredBackgroundPublisher: AnyPublisher<Void, Never> {
+        foregroundFromExpiredBackgroundSubject.eraseToAnyPublisher()
     }
 
 }
