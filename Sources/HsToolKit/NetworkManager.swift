@@ -1,5 +1,6 @@
 import Foundation
 import Alamofire
+import HsExtensions
 
 public class NetworkManager {
     private static var index = 1
@@ -45,10 +46,30 @@ public class NetworkManager {
             request = request.cacheResponse(using: ResponseCacher(behavior: responseCacherBehavior))
         }
 
+        let uuid = Self.index
+        Self.index += 1
+
+        logger?.debug("API OUT [\(uuid)]: \(method.rawValue) \(url) \(parameters)")
+
         do {
-            return try await request.serializingData(automaticallyCancelling: true).value
+            let data = try await request.serializingData(automaticallyCancelling: true).value
+
+            let resultLog: String
+            if let json = try? JSONSerialization.jsonObject(with: data, options: .allowFragments),
+               let prettyData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
+               let jsonString = String(data: prettyData, encoding: .utf8) {
+                resultLog = jsonString
+            } else {
+                resultLog = data.hs.hexString
+            }
+            logger?.debug("API IN [\(uuid)]: \(resultLog)")
+
+            return data
         } catch {
-            throw Self.unwrap(error: error)
+            let unwrappedError = Self.unwrap(error: error)
+            logger?.error("API IN [\(uuid)]: \(method.rawValue) \(url) \(parameters): \(unwrappedError)")
+
+            throw unwrappedError
         }
     }
 
@@ -56,21 +77,13 @@ public class NetworkManager {
             url: URLConvertible, method: HTTPMethod = .get, parameters: Parameters = [:], encoding: ParameterEncoding = URLEncoding.default,
             headers: HTTPHeaders? = nil, interceptor: RequestInterceptor? = nil, responseCacherBehavior: ResponseCacher.Behavior? = nil
     ) async throws -> Any {
-        let uuid = Self.index
-        Self.index += 1
-
-        logger?.debug("API OUT [\(uuid)]: \(method.rawValue) \(url) \(parameters)")
 
         let data = try await fetchData(
                 url: url, method: method, parameters: parameters, encoding: encoding, headers: headers, interceptor: interceptor,
                 responseCacherBehavior: responseCacherBehavior, contentType: "application/json"
         )
 
-        let json = try JSONSerialization.jsonObject(with: data, options: .allowFragments)
-
-        logger?.debug("API IN [\(uuid)]: \(json)")
-
-        return json
+        return try JSONSerialization.jsonObject(with: data, options: .allowFragments)
     }
 
     // todo: remove this method, used for back-compatibility only
@@ -105,17 +118,8 @@ public class NetworkManager {
 
     // todo: remove this method, used for back-compatibility only
     func fetchJson(request: DataRequest, responseCacherBehavior: ResponseCacher.Behavior? = nil) async throws -> Any {
-        let uuid = Self.index
-        Self.index += 1
-
-        logger?.debug("API OUT [\(uuid)]: \(request)")
-
         let data = try await fetchData(request: request, responseCacherBehavior: responseCacherBehavior, contentType: "application/json")
-        let json = try JSONSerialization.jsonObject(with: data, options: .allowFragments)
-
-        logger?.debug("API IN [\(uuid)]: \(json)")
-
-        return json
+        return try JSONSerialization.jsonObject(with: data, options: .allowFragments)
     }
 
 }

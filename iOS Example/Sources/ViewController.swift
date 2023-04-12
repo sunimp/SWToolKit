@@ -9,16 +9,14 @@ class ViewController: UIViewController {
     private let networkManager = NetworkManager(interRequestInterval: 1, logger: Logger(minLogLevel: .error))
     private let reachabilityManager = ReachabilityManager()
 
-    private var cancelBag = Set<AnyCancellable>()
+    private var cancellables = Set<AnyCancellable>()
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
         reachabilityManager.$isReachable
-                .removeDuplicates()
                 .sink { print("Reachable: \($0)") }
-                .store(in: &cancelBag)
-
+                .store(in: &cancellables)
 
         for i in 1...3 {
             Task {
