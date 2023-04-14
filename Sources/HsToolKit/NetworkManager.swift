@@ -51,9 +51,10 @@ public class NetworkManager {
 
         logger?.debug("API OUT [\(uuid)]: \(method.rawValue) \(url) \(parameters)")
 
-        do {
-            let data = try await request.serializingData(automaticallyCancelling: true).value
+        let response = await request.serializingData(automaticallyCancelling: true).response
 
+        switch response.result {
+        case .success(let data):
             let resultLog: String
             if let json = try? JSONSerialization.jsonObject(with: data, options: .allowFragments),
                let prettyData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
@@ -65,11 +66,16 @@ public class NetworkManager {
             logger?.debug("API IN [\(uuid)]: \(resultLog)")
 
             return data
-        } catch {
-            let unwrappedError = Self.unwrap(error: error)
-            logger?.error("API IN [\(uuid)]: \(method.rawValue) \(url) \(parameters): \(unwrappedError)")
+        case .failure:
+            let responseError = ResponseError(
+                    statusCode: response.response?.statusCode,
+                    json: response.data.flatMap { try? JSONSerialization.jsonObject(with: $0, options: .allowFragments) },
+                    rawData: response.data
+            )
 
-            throw unwrappedError
+            logger?.error("API IN [\(uuid)]: \(responseError)")
+
+            throw responseError
         }
     }
 
@@ -126,6 +132,22 @@ public class NetworkManager {
 
 extension NetworkManager {
 
+    struct ResponseError: Error, CustomStringConvertible {
+        let statusCode: Int?
+        let json: Any?
+        let rawData: Data?
+
+        var description: String {
+            var string = "No json"
+            if let json, let prettyData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted), let jsonString = String(data: prettyData, encoding: .utf8) {
+                string = jsonString
+            }
+
+            return "[statusCode: \(statusCode.map { "\($0)" } ?? "nil")]\n\(string)"
+        }
+    }
+
+    // todo: remove this unwrapping, not required in new implementation
     public static func unwrap(error: Error) -> Error {
         if case let AFError.responseSerializationFailed(reason) = error, case let .customSerializationFailed(error) = reason {
             return error
