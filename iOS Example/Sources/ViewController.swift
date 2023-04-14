@@ -25,7 +25,7 @@ class ViewController: UIViewController {
 
                     print("\(i) - \(categories.count)")
                 } catch {
-                    print("ERROR: \(error)")
+                    print("ERROR: \(error.localizedDescription)")
                 }
             }
         }

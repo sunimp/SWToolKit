@@ -132,10 +132,14 @@ public class NetworkManager {
 
 extension NetworkManager {
 
-    struct ResponseError: Error, CustomStringConvertible {
+    struct ResponseError: LocalizedError, CustomStringConvertible {
         let statusCode: Int?
         let json: Any?
         let rawData: Data?
+
+        var errorDescription: String? {
+            description
+        }
 
         var description: String {
             var string = "No json"
