@@ -30,7 +30,7 @@ public class NetworkManager {
                 lastRequestTime = now
             } else {
                 lastRequestTime += interRequestInterval
-                try await Task.sleep(nanoseconds: UInt64((lastRequestTime - now) * 1_000_000_000))
+                try? await Task.sleep(nanoseconds: UInt64((lastRequestTime - now) * 1_000_000_000))
             }
         }
 
@@ -66,16 +66,20 @@ public class NetworkManager {
             logger?.debug("API IN [\(uuid)]: \(resultLog)")
 
             return data
-        case .failure:
-            let responseError = ResponseError(
-                    statusCode: response.response?.statusCode,
-                    json: response.data.flatMap { try? JSONSerialization.jsonObject(with: $0, options: .allowFragments) },
-                    rawData: response.data
-            )
+        case .failure(let error):
+            if let httpResponse = response.response {
+                let responseError = ResponseError(
+                        statusCode: httpResponse.statusCode,
+                        json: response.data.flatMap { try? JSONSerialization.jsonObject(with: $0, options: .allowFragments) },
+                        rawData: response.data
+                )
 
-            logger?.error("API IN [\(uuid)]: \(responseError)")
+                logger?.error("API IN [\(uuid)]: \(responseError)")
 
-            throw responseError
+                throw responseError
+            }
+
+            throw error
         }
     }
 
