@@ -136,16 +136,16 @@ public class NetworkManager {
 
 extension NetworkManager {
 
-    struct ResponseError: LocalizedError, CustomStringConvertible {
-        let statusCode: Int?
-        let json: Any?
-        let rawData: Data?
+    public struct ResponseError: LocalizedError, CustomStringConvertible {
+        public let statusCode: Int?
+        public let json: Any?
+        public let rawData: Data?
 
-        var errorDescription: String? {
+        public var errorDescription: String? {
             description
         }
 
-        var description: String {
+        public var description: String {
             var string = "No json"
             if let json, let prettyData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted), let jsonString = String(data: prettyData, encoding: .utf8) {
                 string = jsonString
