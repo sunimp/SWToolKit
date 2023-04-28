@@ -97,7 +97,7 @@ public class NetworkManager {
     }
 
     // todo: remove this method, used for back-compatibility only
-    func fetchData(request: DataRequest, responseCacherBehavior: ResponseCacher.Behavior? = nil, contentType: String? = nil) async throws -> Data {
+    public func fetchData(request: DataRequest, responseCacherBehavior: ResponseCacher.Behavior? = nil, contentType: String? = nil) async throws -> Data {
         if let interRequestInterval {
             let now = Date().timeIntervalSince1970
 
@@ -127,7 +127,7 @@ public class NetworkManager {
     }
 
     // todo: remove this method, used for back-compatibility only
-    func fetchJson(request: DataRequest, responseCacherBehavior: ResponseCacher.Behavior? = nil) async throws -> Any {
+    public func fetchJson(request: DataRequest, responseCacherBehavior: ResponseCacher.Behavior? = nil) async throws -> Any {
         let data = try await fetchData(request: request, responseCacherBehavior: responseCacherBehavior, contentType: "application/json")
         return try JSONSerialization.jsonObject(with: data, options: .allowFragments)
     }
