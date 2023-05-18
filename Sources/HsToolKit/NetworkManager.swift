@@ -164,4 +164,22 @@ extension NetworkManager {
         return error
     }
 
+    public struct TaskError: Error {}
+
+}
+
+public extension Error {
+
+    var isExplicitlyCancelled: Bool {
+        switch self {
+        case let error as Alamofire.AFError:
+            switch error {
+            case .explicitlyCancelled: return true
+            default: return false
+            }
+        case is NetworkManager.TaskError: return true
+        default: return false
+        }
+    }
+
 }
