@@ -164,7 +164,9 @@ extension NetworkManager {
         return error
     }
 
-    public struct TaskError: Error {}
+    public struct TaskError: Error {
+        public init() {}
+    }
 
 }
 
