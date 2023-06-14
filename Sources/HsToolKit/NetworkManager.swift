@@ -21,7 +21,7 @@ public class NetworkManager {
     public func fetchData(
             url: URLConvertible, method: HTTPMethod = .get, parameters: Parameters = [:], encoding: ParameterEncoding = URLEncoding.default,
             headers: HTTPHeaders? = nil, interceptor: RequestInterceptor? = nil, responseCacherBehavior: ResponseCacher.Behavior? = nil,
-            contentType: String? = nil
+            contentTypes: [String]? = nil
     ) async throws -> Data {
         if let interRequestInterval {
             let now = Date().timeIntervalSince1970
@@ -38,8 +38,8 @@ public class NetworkManager {
                 .request(url, method: method, parameters: parameters, encoding: encoding, headers: headers, interceptor: interceptor)
                 .validate(statusCode: 200..<400)
 
-        if let contentType {
-            request = request.validate(contentType: [contentType])
+        if let contentTypes {
+            request = request.validate(contentType: contentTypes)
         }
 
         if let responseCacherBehavior {
@@ -90,14 +90,14 @@ public class NetworkManager {
 
         let data = try await fetchData(
                 url: url, method: method, parameters: parameters, encoding: encoding, headers: headers, interceptor: interceptor,
-                responseCacherBehavior: responseCacherBehavior, contentType: "application/json"
+                responseCacherBehavior: responseCacherBehavior, contentTypes: ["application/json", "text/plain"]
         )
 
         return try JSONSerialization.jsonObject(with: data, options: .allowFragments)
     }
 
     // todo: remove this method, used for back-compatibility only
-    public func fetchData(request: DataRequest, responseCacherBehavior: ResponseCacher.Behavior? = nil, contentType: String? = nil) async throws -> Data {
+    public func fetchData(request: DataRequest, responseCacherBehavior: ResponseCacher.Behavior? = nil, contentTypes: [String]? = nil) async throws -> Data {
         if let interRequestInterval {
             let now = Date().timeIntervalSince1970
 
@@ -111,8 +111,8 @@ public class NetworkManager {
 
         var request = request.validate(statusCode: 200..<400)
 
-        if let contentType {
-            request = request.validate(contentType: [contentType])
+        if let contentTypes {
+            request = request.validate(contentType: contentTypes)
         }
 
         if let responseCacherBehavior {
@@ -128,7 +128,7 @@ public class NetworkManager {
 
     // todo: remove this method, used for back-compatibility only
     public func fetchJson(request: DataRequest, responseCacherBehavior: ResponseCacher.Behavior? = nil) async throws -> Any {
-        let data = try await fetchData(request: request, responseCacherBehavior: responseCacherBehavior, contentType: "application/json")
+        let data = try await fetchData(request: request, responseCacherBehavior: responseCacherBehavior, contentTypes: ["application/json", "text/plain"])
         return try JSONSerialization.jsonObject(with: data, options: .allowFragments)
     }
 
