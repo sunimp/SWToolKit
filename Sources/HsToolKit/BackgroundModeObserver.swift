@@ -1,23 +1,23 @@
-import Foundation
 import Combine
+import Foundation
 import UIKit
 
 public class BackgroundModeObserver {
     public static let shared = BackgroundModeObserver()
 
     private let foregroundFromExpiredBackgroundSubject = PassthroughSubject<Void, Never>()
-    private var backgroundTask: UIBackgroundTaskIdentifier = UIBackgroundTaskIdentifier.invalid
+    private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
     private var cancellables = Set<AnyCancellable>()
 
     init() {
         NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
-                .sink { [weak self] _ in self?.appCameToBackground() }
-                .store(in: &cancellables)
+            .sink { [weak self] _ in self?.appCameToBackground() }
+            .store(in: &cancellables)
 
         NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
-                .sink { [weak self] _ in self?.appCameToForeground() }
-                .store(in: &cancellables)
+            .sink { [weak self] _ in self?.appCameToForeground() }
+            .store(in: &cancellables)
     }
 
     @objc private func appCameToBackground() {
@@ -39,5 +39,4 @@ public class BackgroundModeObserver {
     public var foregroundFromExpiredBackgroundPublisher: AnyPublisher<Void, Never> {
         foregroundFromExpiredBackgroundSubject.eraseToAnyPublisher()
     }
-
 }

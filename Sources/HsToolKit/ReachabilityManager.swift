@@ -1,12 +1,12 @@
-import Foundation
-import Combine
 import Alamofire
+import Combine
+import Foundation
 import HsExtensions
 
 public class ReachabilityManager {
     private let manager: NetworkReachabilityManager?
 
-    @DistinctPublished private(set) public var isReachable: Bool = false
+    @DistinctPublished public private(set) var isReachable: Bool = false
     private let connectionTypeChangedSubject = PassthroughSubject<Void, Never>()
 
     private var lastConnectionType: NetworkReachabilityManager.NetworkReachabilityStatus.ConnectionType?
@@ -25,7 +25,7 @@ public class ReachabilityManager {
 
     private func onUpdate(status: NetworkReachabilityManager.NetworkReachabilityStatus) {
         switch status {
-        case .reachable(let connectionType):
+        case let .reachable(connectionType):
             isReachable = true
 
             if let lastConnectionType, connectionType != lastConnectionType {
@@ -42,14 +42,10 @@ public class ReachabilityManager {
     public var connectionTypeChangedPublisher: AnyPublisher<Void, Never> {
         connectionTypeChangedSubject.eraseToAnyPublisher()
     }
-
 }
 
-
-extension ReachabilityManager {
-
-    public enum ReachabilityError: Error {
+public extension ReachabilityManager {
+    enum ReachabilityError: Error {
         case notReachable
     }
-
 }

@@ -1,9 +1,9 @@
-import Foundation
+import Alamofire
 import Combine
-import UIKit
+import Foundation
 import HsToolKit
 import ObjectMapper
-import Alamofire
+import UIKit
 
 class ViewController: UIViewController {
     private let networkManager = NetworkManager(interRequestInterval: 2, logger: Logger(minLogLevel: .error))
@@ -15,15 +15,14 @@ class ViewController: UIViewController {
         super.viewDidLoad()
 
         reachabilityManager.$isReachable
-                .sink {
-                    print("Reachable: \($0)")
-                }
-                .store(in: &cancellables)
-
+            .sink {
+                print("Reachable: \($0)")
+            }
+            .store(in: &cancellables)
 
         let task = Task {
             do {
-                for i in 1...10 {
+                for i in 1 ... 10 {
                     let categories: [Category] = try await networkManager.fetch(url: "https://api-dev.blocksdecoded.com/v1/categories", parameters: ["currency": "usd"])
 
                     print("\(i) - \(categories.count)")
@@ -37,7 +36,6 @@ class ViewController: UIViewController {
             task.cancel()
         }
     }
-
 }
 
 class Category: ImmutableMappable {
@@ -48,5 +46,4 @@ class Category: ImmutableMappable {
         uid = try map.value("uid")
         name = try map.value("name")
     }
-
 }

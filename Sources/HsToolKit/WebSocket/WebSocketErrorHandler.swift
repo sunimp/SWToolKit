@@ -22,5 +22,4 @@ final class WebSocketErrorHandler: ChannelInboundHandler {
 
         context.fireErrorCaught(error)
     }
-
 }

@@ -1,9 +1,9 @@
+import Foundation
 import NIO
-import NIOWebSocket
+import NIOFoundationCompat
 import NIOHTTP1
 import NIOSSL
-import Foundation
-import NIOFoundationCompat
+import NIOWebSocket
 
 final class NIOWebSocket: INIOWebSocket {
     enum PeerType {
@@ -18,19 +18,21 @@ final class NIOWebSocket: INIOWebSocket {
     var isClosed: Bool {
         !channel.isActive
     }
+
     private(set) var closeCode: WebSocketErrorCode?
 
     var onClose: EventLoopFuture<Void> {
         channel.closeFuture
     }
+
     var waitingForClose: Bool
 
     private let channel: Channel
-    private var onTextCallback: (NIOWebSocket, String) -> ()
-    private var onBinaryCallback: (NIOWebSocket, ByteBuffer) -> ()
-    private var onPongCallback: (NIOWebSocket) -> ()
-    private var onPingCallback: (NIOWebSocket) -> ()
-    private var onErrorCallback: (NIOWebSocketError) -> ()
+    private var onTextCallback: (NIOWebSocket, String) -> Void
+    private var onBinaryCallback: (NIOWebSocket, ByteBuffer) -> Void
+    private var onPongCallback: (NIOWebSocket) -> Void
+    private var onPingCallback: (NIOWebSocket) -> Void
+    private var onErrorCallback: (NIOWebSocketError) -> Void
     private var frameSequence: WebSocketFrameSequence?
     private let type: PeerType
     private var waitingForPong: Bool
@@ -49,23 +51,23 @@ final class NIOWebSocket: INIOWebSocket {
         scheduledTimeoutTask = nil
     }
 
-    func onText(_ callback: @escaping (NIOWebSocket, String) -> ()) {
+    func onText(_ callback: @escaping (NIOWebSocket, String) -> Void) {
         onTextCallback = callback
     }
 
-    func onBinary(_ callback: @escaping (NIOWebSocket, ByteBuffer) -> ()) {
+    func onBinary(_ callback: @escaping (NIOWebSocket, ByteBuffer) -> Void) {
         onBinaryCallback = callback
     }
 
-    func onPong(_ callback: @escaping (NIOWebSocket) -> ()) {
+    func onPong(_ callback: @escaping (NIOWebSocket) -> Void) {
         onPongCallback = callback
     }
 
-    func onPing(_ callback: @escaping (NIOWebSocket) -> ()) {
+    func onPing(_ callback: @escaping (NIOWebSocket) -> Void) {
         onPingCallback = callback
     }
 
-    func onError(_ callback: @escaping (NIOWebSocketError) -> ()) {
+    func onError(_ callback: @escaping (NIOWebSocketError) -> Void) {
         onErrorCallback = callback
     }
 
@@ -88,27 +90,24 @@ final class NIOWebSocket: INIOWebSocket {
         }
     }
 
-    private func send<S>(_ text: S, promise: EventLoopPromise<Void>? = nil)
-            where S: Collection, S.Element == Character
-    {
+    private func send(_ text: some Collection<Character>, promise: EventLoopPromise<Void>? = nil) {
         let string = String(text)
         var buffer = channel.allocator.buffer(capacity: text.count)
         buffer.writeString(string)
-        self.send(raw: buffer.readableBytesView, opcode: .text, fin: true, promise: promise)
-
+        send(raw: buffer.readableBytesView, opcode: .text, fin: true, promise: promise)
     }
 
     private func send(_ binary: [UInt8], promise: EventLoopPromise<Void>? = nil) {
-        self.send(raw: binary, opcode: .binary, fin: true, promise: promise)
+        send(raw: binary, opcode: .binary, fin: true, promise: promise)
     }
 
-    private func convertToPromise(completionHandler: ((Error?) -> ())?) -> EventLoopPromise<Void>? {
+    private func convertToPromise(completionHandler: ((Error?) -> Void)?) -> EventLoopPromise<Void>? {
         completionHandler.flatMap { handler in
             let promise: EventLoopPromise<Void> = channel.eventLoop.makePromise()
             promise.futureResult.whenComplete { result in
                 switch result {
-                case .success(_): handler(nil)
-                case .failure(let error): handler(error)
+                case .success: handler(nil)
+                case let .failure(error): handler(error)
                 }
             }
 
@@ -116,48 +115,46 @@ final class NIOWebSocket: INIOWebSocket {
         }
     }
 
-    private func send<Data>(
-            raw data: Data,
-            opcode: WebSocketOpcode,
-            fin: Bool = true,
-            promise: EventLoopPromise<Void>? = nil
-    )
-            where Data: DataProtocol
-    {
+    private func send(
+        raw data: some DataProtocol,
+        opcode: WebSocketOpcode,
+        fin: Bool = true,
+        promise: EventLoopPromise<Void>? = nil
+    ) {
         var buffer = channel.allocator.buffer(capacity: data.count)
         buffer.writeBytes(data)
         let frame = WebSocketFrame(
-                fin: fin,
-                opcode: opcode,
-                maskKey: makeMaskKey(),
-                data: buffer
+            fin: fin,
+            opcode: opcode,
+            maskKey: makeMaskKey(),
+            data: buffer
         )
 
         channel.writeAndFlush(frame, promise: promise)
     }
 
     func sendPing(promise: EventLoopPromise<Void>? = nil) {
-        self.send(
-                raw: Data(),
-                opcode: .ping,
-                fin: true,
-                promise: promise
+        send(
+            raw: Data(),
+            opcode: .ping,
+            fin: true,
+            promise: promise
         )
     }
 
-    func send<Data2>(raw data: Data2, opcode: WebSocketOpcode, fin: Bool, completionHandler: ((Error?) -> ())?) where Data2: DataProtocol {
+    func send(raw data: some DataProtocol, opcode: WebSocketOpcode, fin: Bool, completionHandler: ((Error?) -> Void)?) {
         send(raw: data, opcode: opcode, fin: fin, promise: convertToPromise(completionHandler: completionHandler))
     }
 
     func close(code: WebSocketErrorCode = .goingAway) -> EventLoopFuture<Void> {
         let promise = eventLoop.makePromise(of: Void.self)
-        self.close(code: code, promise: promise)
+        close(code: code, promise: promise)
         return promise.futureResult
     }
 
     func close(
-            code: WebSocketErrorCode = .goingAway,
-            promise: EventLoopPromise<Void>?
+        code: WebSocketErrorCode = .goingAway,
+        promise: EventLoopPromise<Void>?
     ) {
         guard !isClosed else {
             promise?.succeed(())
@@ -183,14 +180,14 @@ final class NIOWebSocket: INIOWebSocket {
         var buffer = channel.allocator.buffer(capacity: 2)
         buffer.write(webSocketErrorCode: codeToSend)
 
-        self.send(raw: buffer.readableBytesView, opcode: .connectionClose, fin: true, promise: promise)
+        send(raw: buffer.readableBytesView, opcode: .connectionClose, fin: true, promise: promise)
     }
 
     func makeMaskKey() -> WebSocketMaskingKey? {
         switch type {
         case .client:
             var bytes: [UInt8] = []
-            for _ in 0..<4 {
+            for _ in 0 ..< 4 {
                 bytes.append(.random(in: .min ..< .max))
             }
             return WebSocketMaskingKey(bytes)
@@ -210,12 +207,12 @@ final class NIOWebSocket: INIOWebSocket {
                 let promise = eventLoop.makePromise(of: Void.self)
                 var data = frame.data
                 let maskingKey = frame.maskKey
-                if let maskingKey = maskingKey {
+                if let maskingKey {
                     data.webSocketUnmask(maskingKey)
                 }
-                self.close(
-                        code: data.readWebSocketErrorCode() ?? .unknown(1005),
-                        promise: promise
+                close(
+                    code: data.readWebSocketErrorCode() ?? .unknown(1005),
+                    promise: promise
                 )
                 promise.futureResult.whenComplete { _ in
                     self.channel.close(mode: .output, promise: nil)
@@ -225,17 +222,17 @@ final class NIOWebSocket: INIOWebSocket {
             if frame.fin {
                 var frameData = frame.data
                 let maskingKey = frame.maskKey
-                if let maskingKey = maskingKey {
+                if let maskingKey {
                     frameData.webSocketUnmask(maskingKey)
                 }
-                self.send(
-                        raw: frameData.readableBytesView,
-                        opcode: .pong,
-                        fin: true,
-                        promise: nil
+                send(
+                    raw: frameData.readableBytesView,
+                    opcode: .pong,
+                    fin: true,
+                    promise: nil
                 )
             } else {
-                self.close(code: .protocolError, promise: nil)
+                close(code: .protocolError, promise: nil)
             }
         case .text, .binary, .pong:
             // create a new frame sequence or use existing
@@ -250,12 +247,12 @@ final class NIOWebSocket: INIOWebSocket {
             self.frameSequence = frameSequence
         case .continuation:
             // we must have an existing sequence
-            if var frameSequence = self.frameSequence {
+            if var frameSequence {
                 // append this frame and update
                 frameSequence.append(frame)
                 self.frameSequence = frameSequence
             } else {
-                self.close(code: .protocolError, promise: nil)
+                close(code: .protocolError, promise: nil)
             }
         default:
             // We ignore all other frames.
@@ -264,7 +261,7 @@ final class NIOWebSocket: INIOWebSocket {
 
         // if this frame was final and we have a non-nil frame sequence,
         // output it to the websocket and clear storage
-        if let frameSequence = self.frameSequence, frame.fin {
+        if let frameSequence, frame.fin {
             switch frameSequence.type {
             case .binary:
                 onBinaryCallback(self, frameSequence.binaryBuffer)
@@ -282,14 +279,14 @@ final class NIOWebSocket: INIOWebSocket {
     }
 
     private func pingAndScheduleNextTimeoutTask() {
-        guard channel.isActive, let pingInterval = pingInterval else {
+        guard channel.isActive, let pingInterval else {
             return
         }
 
         if waitingForPong {
             // We never received a pong from our last ping, so the connection has timed out
             let promise = eventLoop.makePromise(of: Void.self)
-            self.close(code: .unknown(1006), promise: promise)
+            close(code: .unknown(1006), promise: promise)
             promise.futureResult.whenComplete { _ in
                 // Usually, closing a WebSocket is done by sending the close frame and waiting
                 // for the peer to respond with their close frame. We are in a timeout situation,
@@ -301,19 +298,17 @@ final class NIOWebSocket: INIOWebSocket {
             sendPing()
             waitingForPong = true
             scheduledTimeoutTask = eventLoop.scheduleTask(
-                    deadline: .now() + pingInterval,
-                    pingAndScheduleNextTimeoutTask
+                deadline: .now() + pingInterval,
+                pingAndScheduleNextTimeoutTask
             )
         }
     }
 }
 
 extension NIOWebSocket: WebSocketErrorHandlerDelegate {
-
     func onError(error: NIOWebSocketError) {
         onErrorCallback(error)
     }
-
 }
 
 private struct WebSocketFrameSequence {
@@ -342,70 +337,69 @@ private struct WebSocketFrameSequence {
 }
 
 extension NIOWebSocket {
-
     static func connect(
-            to url: String,
-            headers: HTTPHeaders = [:],
-            configuration: WebSocketClient.Configuration = .init(),
-            on eventLoopGroup: EventLoopGroup,
-            onUpgrade: @escaping (NIOWebSocket) -> ()
+        to url: String,
+        headers: HTTPHeaders = [:],
+        configuration: WebSocketClient.Configuration = .init(),
+        on eventLoopGroup: EventLoopGroup,
+        onUpgrade: @escaping (NIOWebSocket) -> Void
     ) -> EventLoopFuture<Void> {
         guard let url = URL(string: url) else {
             return eventLoopGroup.next().makeFailedFuture(WebSocketClient.Error.invalidURL)
         }
-        return self.connect(
-                to: url,
-                headers: headers,
-                configuration: configuration,
-                on: eventLoopGroup,
-                onUpgrade: onUpgrade
+        return connect(
+            to: url,
+            headers: headers,
+            configuration: configuration,
+            on: eventLoopGroup,
+            onUpgrade: onUpgrade
         )
     }
 
     static func connect(
-            to url: URL,
-            headers: HTTPHeaders = [:],
-            configuration: WebSocketClient.Configuration = .init(),
-            on eventLoopGroup: EventLoopGroup,
-            onUpgrade: @escaping (NIOWebSocket) -> ()
+        to url: URL,
+        headers: HTTPHeaders = [:],
+        configuration: WebSocketClient.Configuration = .init(),
+        on eventLoopGroup: EventLoopGroup,
+        onUpgrade: @escaping (NIOWebSocket) -> Void
     ) -> EventLoopFuture<Void> {
         let scheme: String
         switch url.scheme {
         case "wss", "https": scheme = "wss"
         default: scheme = "ws"
         }
-        return self.connect(
-                scheme: scheme,
-                host: url.host ?? "localhost",
-                port: url.port ?? (scheme == "wss" ? 443 : 80),
-                path: url.path + (url.hasDirectoryPath ? "/" : ""),
-                headers: headers,
-                configuration: configuration,
-                on: eventLoopGroup,
-                onUpgrade: onUpgrade
+        return connect(
+            scheme: scheme,
+            host: url.host ?? "localhost",
+            port: url.port ?? (scheme == "wss" ? 443 : 80),
+            path: url.path + (url.hasDirectoryPath ? "/" : ""),
+            headers: headers,
+            configuration: configuration,
+            on: eventLoopGroup,
+            onUpgrade: onUpgrade
         )
     }
 
     static func connect(
-            scheme: String = "ws",
-            host: String,
-            port: Int = 80,
-            path: String = "/",
-            headers: HTTPHeaders = [:],
-            configuration: WebSocketClient.Configuration = .init(),
-            on eventLoopGroup: EventLoopGroup,
-            onUpgrade: @escaping (NIOWebSocket) -> ()
+        scheme: String = "ws",
+        host: String,
+        port: Int = 80,
+        path: String = "/",
+        headers: HTTPHeaders = [:],
+        configuration: WebSocketClient.Configuration = .init(),
+        on eventLoopGroup: EventLoopGroup,
+        onUpgrade: @escaping (NIOWebSocket) -> Void
     ) -> EventLoopFuture<Void> {
         WebSocketClient(
-                eventLoopGroupProvider: .shared(eventLoopGroup),
-                configuration: configuration
+            eventLoopGroupProvider: .shared(eventLoopGroup),
+            configuration: configuration
         ).connect(
-                scheme: scheme,
-                host: host,
-                port: port,
-                path: path,
-                headers: headers,
-                onUpgrade: onUpgrade
+            scheme: scheme,
+            host: host,
+            port: port,
+            path: path,
+            headers: headers,
+            onUpgrade: onUpgrade
         )
     }
 }

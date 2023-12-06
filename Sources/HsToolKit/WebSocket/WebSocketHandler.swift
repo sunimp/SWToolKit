@@ -3,23 +3,23 @@ import NIOWebSocket
 
 extension NIOWebSocket {
     static func client(
-            on channel: Channel,
-            onUpgrade: @escaping (NIOWebSocket) -> ()
+        on channel: Channel,
+        onUpgrade: @escaping (NIOWebSocket) -> Void
     ) -> EventLoopFuture<Void> {
         handle(on: channel, as: .client, onUpgrade: onUpgrade)
     }
 
     static func server(
-            on channel: Channel,
-            onUpgrade: @escaping (NIOWebSocket) -> ()
+        on channel: Channel,
+        onUpgrade: @escaping (NIOWebSocket) -> Void
     ) -> EventLoopFuture<Void> {
         handle(on: channel, as: .server, onUpgrade: onUpgrade)
     }
 
     private static func handle(
-            on channel: Channel,
-            as type: PeerType,
-            onUpgrade: @escaping (NIOWebSocket) -> ()
+        on channel: Channel,
+        as type: PeerType,
+        onUpgrade: @escaping (NIOWebSocket) -> Void
     ) -> EventLoopFuture<Void> {
         let webSocket = NIOWebSocket(channel: channel, type: type)
         channel.pipeline.addHandler(WebSocketErrorHandler(delegate: webSocket))
@@ -51,7 +51,7 @@ private final class WebSocketHandler: ChannelInboundHandler {
         self.webSocket = webSocket
     }
 
-    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+    func channelRead(context _: ChannelHandlerContext, data: NIOAny) {
         let frame = unwrapInboundIn(data)
         webSocket.handle(incoming: frame)
     }

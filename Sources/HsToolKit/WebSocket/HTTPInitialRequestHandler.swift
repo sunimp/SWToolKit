@@ -18,16 +18,16 @@ final class HTTPInitialRequestHandler: ChannelInboundHandler, RemovableChannelHa
     }
 
     func channelActive(context: ChannelHandlerContext) {
-        var headers = self.headers
+        var headers = headers
         headers.add(name: "Content-Type", value: "text/plain; charset=utf-8")
         headers.add(name: "Content-Length", value: "\(0)")
         headers.add(name: "Host", value: host)
 
         let requestHead = HTTPRequestHead(
-                version: HTTPVersion(major: 1, minor: 1),
-                method: .GET,
-                uri: path.hasPrefix("/") ? path : "/" + path,
-                headers: headers
+            version: HTTPVersion(major: 1, minor: 1),
+            method: .GET,
+            uri: path.hasPrefix("/") ? path : "/" + path,
+            headers: headers
         )
         context.write(wrapOutboundOut(.head(requestHead)), promise: nil)
 
@@ -41,7 +41,7 @@ final class HTTPInitialRequestHandler: ChannelInboundHandler, RemovableChannelHa
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let clientResponse = unwrapInboundIn(data)
         switch clientResponse {
-        case .head(let responseHead):
+        case let .head(responseHead):
             upgradePromise.fail(WebSocketClient.Error.invalidResponseStatus(responseHead))
         case .body: break
         case .end:

@@ -5,7 +5,6 @@ public protocol ILogStorage {
 }
 
 public class Logger {
-
     public enum Level: Int {
         case verbose = 0
         case debug = 1
@@ -15,11 +14,11 @@ public class Logger {
     }
 
     private let colors: [Level: String] = [
-        Level.verbose: "💜 VERBOSE ",     // silver
-        Level.debug:   "💚 DEBUG ",       // green
-        Level.info:    "💙 INFO ",        // blue
-        Level.warning: "💛 WARNING ",     // yellow
-        Level.error:   "❤️ ERROR "        // red
+        Level.verbose: "💜 VERBOSE ", // silver
+        Level.debug: "💚 DEBUG ", // green
+        Level.info: "💙 INFO ", // blue
+        Level.warning: "💛 WARNING ", // yellow
+        Level.error: "❤️ ERROR ", // red
     ]
 
     private lazy var dateFormatter: DateFormatter = {
@@ -38,58 +37,63 @@ public class Logger {
     public init(minLogLevel: Level, storage: ILogStorage? = nil) {
         self.minLogLevel = minLogLevel
         self.storage = storage
-        self.scope = nil
-        self.delegate = nil
+        scope = nil
+        delegate = nil
     }
 
-    fileprivate init(minLogLevel: Level, scope: String, delegate: Logger) {
+    private init(minLogLevel: Level, scope: String, delegate: Logger) {
         self.minLogLevel = minLogLevel
-        self.storage = nil
+        storage = nil
         self.scope = scope
         self.delegate = delegate
     }
 
     public func scoped(with scope: String) -> Logger {
-        Logger(minLogLevel: self.minLogLevel, scope: scope, delegate: self)
+        Logger(minLogLevel: minLogLevel, scope: scope, delegate: self)
     }
 
     /// log something generally unimportant (lowest priority)
     public func verbose(_ message: @autoclosure () -> Any,
-                        _ file: String? = nil, _ function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false) {
+                        _ file: String? = nil, _ function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false)
+    {
         log(level: .verbose, message: message(), file: file, function: function, line: line, context: context, save: save)
     }
 
     /// log something which help during debugging (low priority)
     public func debug(_ message: @autoclosure () -> Any,
-                      _ file: String? = nil, _ function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false) {
+                      _ file: String? = nil, _ function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false)
+    {
         log(level: .debug, message: message(), file: file, function: function, line: line, context: context, save: save)
     }
 
     /// log something which you are really interested but which is not an issue or error (normal priority)
     public func info(_ message: @autoclosure () -> Any,
-                     _ file: String? = nil, _ function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false) {
+                     _ file: String? = nil, _ function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false)
+    {
         log(level: .info, message: message(), file: file, function: function, line: line, context: context, save: save)
     }
 
     /// log something which may cause big trouble soon (high priority)
     public func warning(_ message: @autoclosure () -> Any,
-                        _ file: String? = nil, _ function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false) {
+                        _ file: String? = nil, _ function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false)
+    {
         log(level: .warning, message: message(), file: file, function: function, line: line, context: context, save: save)
     }
 
     /// log something which will keep you awake at night (highest priority)
     public func error(_ message: @autoclosure () -> Any,
-                      _ file: String? = nil, _ function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false) {
+                      _ file: String? = nil, _ function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false)
+    {
         log(level: .error, message: message(), file: file, function: function, line: line, context: context, save: save)
     }
 
     /// custom logging to manually adjust values, should just be used by other frameworks
     public func log(level: Logger.Level, message: @autoclosure () -> Any,
-                    file: String? = nil, function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false) {
-
-        if let delegate = delegate {
+                    file: String? = nil, function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false)
+    {
+        if let delegate {
             var scopedContext = context ?? [String]()
-            if let scope = scope {
+            if let scope {
                 scopedContext.insert(scope, at: 0)
             }
 
@@ -98,7 +102,7 @@ public class Logger {
             return
         }
 
-        if let storage = storage, save {
+        if let storage, save {
             storage.log(date: Date(), level: level, message: "\(message())", file: file, function: function, line: line, context: context)
         }
 
@@ -108,19 +112,19 @@ public class Logger {
 
         var str = "\(dateFormatter.string(from: Date())) \(colors[level]!)"
 
-        if let file = file {
+        if let file {
             str = str + " \(fileNameWithoutSuffix(file)) "
 
-            if let function = function {
+            if let function {
                 str = str + " \(function) "
             }
 
-            if let line = line {
+            if let line {
                 str = str + " \(line) "
             }
         }
 
-        if let context = context {
+        if let context {
             str = str + " \(context.joined(separator: " "))"
         }
 
@@ -143,7 +147,7 @@ public class Logger {
             return ""
         } else {
             let threadName = Thread.current.name
-            if let threadName = threadName, !threadName.isEmpty {
+            if let threadName, !threadName.isEmpty {
                 return threadName
             } else {
                 return String(format: "%p", Thread.current)
@@ -172,5 +176,4 @@ public class Logger {
         }
         return ""
     }
-
 }

@@ -31,7 +31,7 @@ public protocol IWebSocket: AnyObject {
     func start()
     func stop()
 
-    func send(data: Data, completionHandler: ((Error?) -> ())?) throws
+    func send(data: Data, completionHandler: ((Error?) -> Void)?) throws
     func send(ping: Data) throws
     func send(pong: Data) throws
 }
@@ -40,13 +40,13 @@ protocol INIOWebSocket: AnyObject {
     var onClose: EventLoopFuture<Void> { get }
     var pingInterval: TimeAmount? { get set }
     var waitingForClose: Bool { get }
-    func onText(_ callback: @escaping (NIOWebSocket, String) -> ())
-    func onBinary(_ callback: @escaping (NIOWebSocket, ByteBuffer) -> ())
-    func onPong(_ callback: @escaping (NIOWebSocket) -> ())
-    func onPing(_ callback: @escaping (NIOWebSocket) -> ())
-    func onError(_ callback: @escaping (NIOWebSocketError) -> ())
+    func onText(_ callback: @escaping (NIOWebSocket, String) -> Void)
+    func onBinary(_ callback: @escaping (NIOWebSocket, ByteBuffer) -> Void)
+    func onPong(_ callback: @escaping (NIOWebSocket) -> Void)
+    func onPing(_ callback: @escaping (NIOWebSocket) -> Void)
+    func onError(_ callback: @escaping (NIOWebSocketError) -> Void)
     func sendPing(promise: EventLoopPromise<Void>?)
-    func send<Data>(raw data: Data, opcode: WebSocketOpcode, fin: Bool, completionHandler: ((Error?) -> ())?) where Data: DataProtocol
+    func send<Data>(raw data: Data, opcode: WebSocketOpcode, fin: Bool, completionHandler: ((Error?) -> Void)?) where Data: DataProtocol
     func close(code: WebSocketErrorCode) -> EventLoopFuture<Void>
 }
 
