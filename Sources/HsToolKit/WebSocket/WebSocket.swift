@@ -10,26 +10,27 @@ public class WebSocket: NSObject {
     private var cancellables = Set<AnyCancellable>()
     private var logger: Logger?
 
-    private let queue = DispatchQueue(label: "websocket-delegate-queue", qos: .background)
+    private let stateQueue = DispatchQueue(label: "websocket-state-queue", qos: .background)
+    private let websocketQueue = DispatchQueue(label: "websocket-queue", qos: .background)
     private let reachabilityManager: ReachabilityManager
 
     private let url: URL
     private let auth: String?
     private let maxFrameSize: Int
 
-    private var eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    private var eventLoopGroup: MultiThreadedEventLoopGroup?
     private var nioWebSocket: INIOWebSocket?
     private var isStarted = false
 
     private var _state: WebSocketState = .disconnected(error: WebSocketState.DisconnectError.notStarted)
     public var state: WebSocketState {
         get {
-            queue.sync {
+            stateQueue.sync {
                 _state
             }
         }
         set {
-            queue.async { [weak self] in
+            stateQueue.async { [weak self] in
                 self?._state = newValue
                 DispatchQueue.global(qos: .utility).async {
                     self?.delegate?.didUpdate(state: newValue)
@@ -51,7 +52,7 @@ public class WebSocket: NSObject {
         reachabilityManager.$isReachable
                 .sink { [weak self] isReachable in
                     if isReachable {
-                        self?.connect()
+                        self?.asyncConnect()
                     } else {
                         self?.disconnect(code: .normalClosure, error: WebSocketState.DisconnectError.socketDisconnected(reason: .networkNotReachable))
                     }
@@ -65,20 +66,20 @@ public class WebSocket: NSObject {
                     }
 
                     self?.disconnect(code: .normalClosure, error: WebSocketState.DisconnectError.socketDisconnected(reason: .networkNotReachable))
-                    self?.connect()
+                    self?.asyncConnect()
                 }
                 .store(in: &cancellables)
 
         BackgroundModeObserver.shared.foregroundFromExpiredBackgroundPublisher
                 .sink { [weak self] in
                     self?.disconnect(code: .normalClosure, error: WebSocketState.DisconnectError.socketDisconnected(reason: .appInBackgroundMode))
-                    self?.connect()
+                    self?.asyncConnect()
                 }
                 .store(in: &cancellables)
     }
 
     deinit {
-        eventLoopGroup.shutdownGracefully { _ in }
+        eventLoopGroup?.shutdownGracefully { _ in }
     }
 
     private func connect() {
@@ -89,7 +90,7 @@ public class WebSocket: NSObject {
         if let socket = nioWebSocket {
             socket.close(code: .normalClosure).whenComplete { [weak self] _ in
                 self?.nioWebSocket = nil
-                self?.connect()
+                self?.asyncConnect()
             }
             return
         }
@@ -105,7 +106,16 @@ public class WebSocket: NSObject {
         }
 
         let configuration = WebSocketClient.Configuration(maxFrameSize: maxFrameSize)
-        let nioWebSocket = NIOWebSocket.connect(to: url, headers: headers, configuration: configuration, on: eventLoopGroup) { [weak self] webSocket in
+
+        let _eventLoopGroup: MultiThreadedEventLoopGroup
+        if let existing = eventLoopGroup {
+            _eventLoopGroup = existing
+        } else {
+            _eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+            eventLoopGroup = _eventLoopGroup
+        }
+
+        let nioWebSocket = NIOWebSocket.connect(to: url, headers: headers, configuration: configuration, on: _eventLoopGroup) { [weak self] webSocket in
             self?.onConnected(webSocket: webSocket)
         }
 
@@ -115,9 +125,15 @@ public class WebSocket: NSObject {
         }
     }
 
+    private func asyncConnect() {
+        websocketQueue.async { [weak self] in
+            self?.connect()
+        }
+    }
+
     private func disconnect(code: WebSocketErrorCode, error: Error = WebSocketState.DisconnectError.notStarted) {
         logger?.debug("Disconnecting from websocket with code: \(code); error: \(error)")
-        nioWebSocket?.close(code: code)
+        _ = nioWebSocket?.close(code: code)
         state = .disconnected(error: error)
     }
 
@@ -132,7 +148,7 @@ public class WebSocket: NSObject {
 
             self?.logger?.debug("WebSocket disconnected by server")
             self?.disconnect(code: .unexpectedServerError, error: WebSocketState.DisconnectError.socketDisconnected(reason: .unexpectedServerError))
-            self?.connect()
+            self?.asyncConnect()
         }
 
         webSocket.onText { [weak self] _, text in
@@ -187,7 +203,7 @@ extension WebSocket: IWebSocket {
 
     public func start() {
         isStarted = true
-        connect()
+        asyncConnect()
     }
 
     public func stop() {
