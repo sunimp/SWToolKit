@@ -22,7 +22,7 @@ extension NIOWebSocket {
         onUpgrade: @escaping (NIOWebSocket) -> Void
     ) -> EventLoopFuture<Void> {
         let webSocket = NIOWebSocket(channel: channel, type: type)
-        channel.pipeline.addHandler(WebSocketErrorHandler(delegate: webSocket))
+        _ = channel.pipeline.addHandler(WebSocketErrorHandler(delegate: webSocket))
 
         return channel.pipeline.addHandler(WebSocketHandler(webSocket: webSocket)).map { _ in
             onUpgrade(webSocket)

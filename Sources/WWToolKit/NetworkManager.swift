@@ -1,6 +1,6 @@
 import Alamofire
 import Foundation
-import HsExtensions
+import WWExtensions
 
 public class NetworkManager {
     private static var index = 1
@@ -62,7 +62,7 @@ public class NetworkManager {
             {
                 resultLog = jsonString
             } else {
-                resultLog = data.hs.hexString
+                resultLog = data.ww.hexString
             }
             logger?.debug("API IN [\(uuid)]: \(resultLog)")
 

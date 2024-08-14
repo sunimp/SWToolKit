@@ -1,7 +1,7 @@
 import Alamofire
 import Combine
 import Foundation
-import HsExtensions
+import WWExtensions
 
 public class ReachabilityManager {
     private let manager: NetworkReachabilityManager?
