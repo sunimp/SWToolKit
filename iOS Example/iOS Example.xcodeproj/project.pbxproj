@@ -3,14 +3,14 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 52;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		3A39D09C2757536E0022CB8B /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A39D09A2757536E0022CB8B /* ViewController.swift */; };
 		3A39D09D2757536E0022CB8B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A39D09B2757536E0022CB8B /* AppDelegate.swift */; };
+		A49C8A5D2C757D9600E4F45B /* WWToolKit in Frameworks */ = {isa = PBXBuildFile; productRef = A49C8A5C2C757D9600E4F45B /* WWToolKit */; };
 		D94502FD261F98A500F6BF2E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D94502FC261F98A500F6BF2E /* Assets.xcassets */; };
-		D945030C261F99CC00F6BF2E /* HsToolKit in Frameworks */ = {isa = PBXBuildFile; productRef = D945030B261F99CC00F6BF2E /* HsToolKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,7 +26,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D945030C261F99CC00F6BF2E /* HsToolKit in Frameworks */,
+				A49C8A5D2C757D9600E4F45B /* WWToolKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,7 +85,7 @@
 			);
 			name = "iOS Example";
 			packageProductDependencies = (
-				D945030B261F99CC00F6BF2E /* HsToolKit */,
+				A49C8A5C2C757D9600E4F45B /* WWToolKit */,
 			);
 			productName = "iOS Example";
 			productReference = D94502F5261F98A400F6BF2E /* iOS Example.app */;
@@ -97,8 +97,9 @@
 		D94502ED261F98A400F6BF2E /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
+				BuildIndependentTargetsInParallel = YES;
 				LastSwiftUpdateCheck = 1240;
-				LastUpgradeCheck = 1240;
+				LastUpgradeCheck = 1540;
 				TargetAttributes = {
 					D94502F4261F98A400F6BF2E = {
 						CreatedOnToolsVersion = 12.4;
@@ -185,6 +186,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -246,6 +248,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -333,9 +336,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		D945030B261F99CC00F6BF2E /* HsToolKit */ = {
+		A49C8A5C2C757D9600E4F45B /* WWToolKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = HsToolKit;
+			productName = WWToolKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

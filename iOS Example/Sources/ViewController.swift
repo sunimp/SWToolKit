@@ -1,9 +1,16 @@
-import Alamofire
+//
+//  ViewController.swift
+//  WWToolKit-Example
+//
+//  Created by Sun on 2024/8/21.
+//
+
+import UIKit
 import Combine
-import Foundation
+
+import Alamofire
 import WWToolKit
 import ObjectMapper
-import UIKit
 
 class ViewController: UIViewController {
     private let networkManager = NetworkManager(interRequestInterval: 2, logger: Logger(minLogLevel: .error))

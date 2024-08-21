@@ -1,6 +1,12 @@
-import Combine
-import Foundation
+//
+//  BackgroundModeObserver.swift
+//  WWToolKit
+//
+//  Created by Sun on 2024/8/21.
+//
+
 import UIKit
+import Combine
 
 public class BackgroundModeObserver {
     public static let shared = BackgroundModeObserver()

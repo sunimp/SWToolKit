@@ -1,5 +1,13 @@
-import Alamofire
+//
+//  NetworkManager+ObjectMapper.swift
+//  WWToolKit
+//
+//  Created by Sun on 2024/8/21.
+//
+
 import Foundation
+
+import Alamofire
 import ObjectMapper
 
 public extension NetworkManager {

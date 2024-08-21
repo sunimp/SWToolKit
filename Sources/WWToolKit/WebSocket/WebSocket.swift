@@ -1,5 +1,13 @@
-import Combine
+//
+//  WebSocket.swift
+//  WWToolKit
+//
+//  Created by Sun on 2024/8/21.
+//
+
 import Foundation
+import Combine
+
 import NIO
 import NIOHTTP1
 import NIOWebSocket
