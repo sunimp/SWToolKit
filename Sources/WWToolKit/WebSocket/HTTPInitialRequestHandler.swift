@@ -50,7 +50,7 @@ final class HTTPInitialRequestHandler: ChannelInboundHandler, RemovableChannelHa
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let clientResponse = unwrapInboundIn(data)
         switch clientResponse {
-        case let .head(responseHead):
+        case .head(let responseHead):
             upgradePromise.fail(WebSocketClient.Error.invalidResponseStatus(responseHead))
         case .body: break
         case .end:

@@ -51,6 +51,8 @@ extension WebSocketErrorCode {
     }
 }
 
+// MARK: - WebSocketHandler
+
 private final class WebSocketHandler: ChannelInboundHandler {
     typealias InboundIn = WebSocketFrame
     typealias OutboundOut = WebSocketFrame
@@ -66,12 +68,12 @@ private final class WebSocketHandler: ChannelInboundHandler {
     }
 
     func errorCaught(context: ChannelHandlerContext, error: Error) {
-        let errorCode: WebSocketErrorCode
-        if let error = error as? NIOWebSocketError {
-            errorCode = WebSocketErrorCode(error)
-        } else {
-            errorCode = .unexpectedServerError
-        }
+        let errorCode: WebSocketErrorCode =
+            if let error = error as? NIOWebSocketError {
+                WebSocketErrorCode(error)
+            } else {
+                .unexpectedServerError
+            }
         _ = webSocket.close(code: errorCode)
 
         // We always forward the error on to let others see it.

@@ -10,13 +10,15 @@ import Foundation
 import Alamofire
 import WWExtensions
 
+// MARK: - NetworkManager
+
 public class NetworkManager {
     private static var index = 1
 
     // TODO: make session private, remove all external usages
     public let session: Session
     private let interRequestInterval: TimeInterval?
-    private var logger: Logger?
+    private var logger: Logger? = nil
 
     private var lastRequestTime: TimeInterval = 0
 
@@ -27,8 +29,10 @@ public class NetworkManager {
     }
 
     public func fetchData(
-        url: URLConvertible, method: HTTPMethod = .get, parameters: Parameters = [:], encoding: ParameterEncoding = URLEncoding.default,
-        headers: HTTPHeaders? = nil, interceptor: RequestInterceptor? = nil, responseCacherBehavior: ResponseCacher.Behavior? = nil,
+        url: URLConvertible, method: HTTPMethod = .get, parameters: Parameters = [:],
+        encoding: ParameterEncoding = URLEncoding.default,
+        headers: HTTPHeaders? = nil, interceptor: RequestInterceptor? = nil,
+        responseCacherBehavior: ResponseCacher.Behavior? = nil,
         contentTypes: [String]? = nil
     ) async throws -> Data {
         if let interRequestInterval {
@@ -62,20 +66,22 @@ public class NetworkManager {
         let response = await request.serializingData(automaticallyCancelling: true).response
 
         switch response.result {
-        case let .success(data):
-            let resultLog: String
-            if let json = try? JSONSerialization.jsonObject(with: data, options: .allowFragments),
-               let prettyData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
-               let jsonString = String(data: prettyData, encoding: .utf8)
-            {
-                resultLog = jsonString
-            } else {
-                resultLog = data.ww.hexString
-            }
+        case .success(let data):
+            let resultLog: String =
+                if
+                    let json = try? JSONSerialization.jsonObject(with: data, options: .allowFragments),
+                    let prettyData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
+                    let jsonString = String(data: prettyData, encoding: .utf8)
+                {
+                    jsonString
+                } else {
+                    data.ww.hexString
+                }
             logger?.debug("API IN [\(uuid)]: \(resultLog)")
 
             return data
-        case let .failure(error):
+
+        case .failure(let error):
             if let httpResponse = response.response {
                 let responseError = ResponseError(
                     statusCode: httpResponse.statusCode,
@@ -93,8 +99,10 @@ public class NetworkManager {
     }
 
     public func fetchJson(
-        url: URLConvertible, method: HTTPMethod = .get, parameters: Parameters = [:], encoding: ParameterEncoding = URLEncoding.default,
-        headers: HTTPHeaders? = nil, interceptor: RequestInterceptor? = nil, responseCacherBehavior: ResponseCacher.Behavior? = nil
+        url: URLConvertible, method: HTTPMethod = .get, parameters: Parameters = [:],
+        encoding: ParameterEncoding = URLEncoding.default,
+        headers: HTTPHeaders? = nil, interceptor: RequestInterceptor? = nil,
+        responseCacherBehavior: ResponseCacher.Behavior? = nil
     ) async throws -> Any {
         let data = try await fetchData(
             url: url, method: method, parameters: parameters, encoding: encoding, headers: headers, interceptor: interceptor,
@@ -105,7 +113,11 @@ public class NetworkManager {
     }
 
     // TODO: remove this method, used for back-compatibility only
-    public func fetchData(request: DataRequest, responseCacherBehavior: ResponseCacher.Behavior? = nil, contentTypes: [String]? = nil) async throws -> Data {
+    public func fetchData(
+        request: DataRequest,
+        responseCacherBehavior: ResponseCacher.Behavior? = nil,
+        contentTypes: [String]? = nil
+    ) async throws -> Data {
         if let interRequestInterval {
             let now = Date().timeIntervalSince1970
 
@@ -136,13 +148,17 @@ public class NetworkManager {
 
     // TODO: remove this method, used for back-compatibility only
     public func fetchJson(request: DataRequest, responseCacherBehavior: ResponseCacher.Behavior? = nil) async throws -> Any {
-        let data = try await fetchData(request: request, responseCacherBehavior: responseCacherBehavior, contentTypes: ["application/json", "text/plain"])
+        let data = try await fetchData(
+            request: request,
+            responseCacherBehavior: responseCacherBehavior,
+            contentTypes: ["application/json", "text/plain"]
+        )
         return try JSONSerialization.jsonObject(with: data, options: .allowFragments)
     }
 }
 
-public extension NetworkManager {
-    struct ResponseError: LocalizedError, CustomStringConvertible {
+extension NetworkManager {
+    public struct ResponseError: LocalizedError, CustomStringConvertible {
         public let statusCode: Int?
         public let json: Any?
         public let rawData: Data?
@@ -153,7 +169,13 @@ public extension NetworkManager {
 
         public var description: String {
             var string = "No json"
-            if let json, let prettyData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted), let jsonString = String(data: prettyData, encoding: .utf8) {
+            if
+                let json, let prettyData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
+                let jsonString = String(
+                    data: prettyData,
+                    encoding: .utf8
+                )
+            {
                 string = jsonString
             }
 
@@ -162,29 +184,31 @@ public extension NetworkManager {
     }
 
     // TODO: remove this unwrapping, not required in new implementation
-    static func unwrap(error: Error) -> Error {
-        if case let AFError.responseSerializationFailed(reason) = error, case let .customSerializationFailed(error) = reason {
+    public static func unwrap(error: Error) -> Error {
+        if case AFError.responseSerializationFailed(let reason) = error, case .customSerializationFailed(let error) = reason {
             return error
         }
 
         return error
     }
 
-    struct TaskError: Error {
-        public init() {}
+    public struct TaskError: Error {
+        public init() { }
     }
 }
 
-public extension Error {
-    var isExplicitlyCancelled: Bool {
+extension Error {
+    public var isExplicitlyCancelled: Bool {
         switch self {
         case let error as Alamofire.AFError:
             switch error {
-            case .explicitlyCancelled: return true
-            default: return false
+            case .explicitlyCancelled: true
+            default: false
             }
-        case is NetworkManager.TaskError: return true
-        default: return false
+
+        case is NetworkManager.TaskError: true
+
+        default: false
         }
     }
 }

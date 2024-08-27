@@ -5,19 +5,22 @@
 //  Created by Sun on 2024/8/21.
 //
 
-import Foundation
 import Combine
+import Foundation
 
 import Alamofire
 import WWExtensions
 
+// MARK: - ReachabilityManager
+
 public class ReachabilityManager {
     private let manager: NetworkReachabilityManager?
 
-    @DistinctPublished public private(set) var isReachable: Bool = false
+    @DistinctPublished
+    public private(set) var isReachable = false
     private let connectionTypeChangedSubject = PassthroughSubject<Void, Never>()
 
-    private var lastConnectionType: NetworkReachabilityManager.NetworkReachabilityStatus.ConnectionType?
+    private var lastConnectionType: NetworkReachabilityManager.NetworkReachabilityStatus.ConnectionType? = nil
 
     public init() {
         manager = NetworkReachabilityManager()
@@ -33,7 +36,7 @@ public class ReachabilityManager {
 
     private func onUpdate(status: NetworkReachabilityManager.NetworkReachabilityStatus) {
         switch status {
-        case let .reachable(connectionType):
+        case .reachable(let connectionType):
             isReachable = true
 
             if let lastConnectionType, connectionType != lastConnectionType {
@@ -41,6 +44,7 @@ public class ReachabilityManager {
             }
 
             lastConnectionType = connectionType
+
         default:
             isReachable = false
             lastConnectionType = nil
@@ -52,8 +56,10 @@ public class ReachabilityManager {
     }
 }
 
-public extension ReachabilityManager {
-    enum ReachabilityError: Error {
+// MARK: ReachabilityManager.ReachabilityError
+
+extension ReachabilityManager {
+    public enum ReachabilityError: Error {
         case notReachable
     }
 }

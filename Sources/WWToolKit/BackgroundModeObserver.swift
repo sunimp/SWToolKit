@@ -5,8 +5,9 @@
 //  Created by Sun on 2024/8/21.
 //
 
-import UIKit
+#if os(iOS)
 import Combine
+import UIKit
 
 public class BackgroundModeObserver {
     public static let shared = BackgroundModeObserver()
@@ -26,14 +27,16 @@ public class BackgroundModeObserver {
             .store(in: &cancellables)
     }
 
-    @objc private func appCameToBackground() {
+    @objc
+    private func appCameToBackground() {
         backgroundTask = UIApplication.shared.beginBackgroundTask {
             UIApplication.shared.endBackgroundTask(self.backgroundTask)
             self.backgroundTask = UIBackgroundTaskIdentifier.invalid
         }
     }
 
-    @objc private func appCameToForeground() {
+    @objc
+    private func appCameToForeground() {
         if backgroundTask != UIBackgroundTaskIdentifier.invalid {
             UIApplication.shared.endBackgroundTask(backgroundTask)
             backgroundTask = UIBackgroundTaskIdentifier.invalid
@@ -46,3 +49,4 @@ public class BackgroundModeObserver {
         foregroundFromExpiredBackgroundSubject.eraseToAnyPublisher()
     }
 }
+#endif

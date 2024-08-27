@@ -10,9 +10,13 @@ import Foundation
 import NIO
 import NIOWebSocket
 
+// MARK: - WebSocketErrorHandlerDelegate
+
 protocol WebSocketErrorHandlerDelegate {
     func onError(error: NIOWebSocketError)
 }
+
+// MARK: - WebSocketErrorHandler
 
 final class WebSocketErrorHandler: ChannelInboundHandler {
     typealias InboundIn = Never

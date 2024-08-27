@@ -13,6 +13,8 @@ import NIOHTTP1
 import NIOSSL
 import NIOWebSocket
 
+// MARK: - NIOWebSocket
+
 final class NIOWebSocket: INIOWebSocket {
     enum PeerType {
         case server
@@ -115,7 +117,7 @@ final class NIOWebSocket: INIOWebSocket {
             promise.futureResult.whenComplete { result in
                 switch result {
                 case .success: handler(nil)
-                case let .failure(error): handler(error)
+                case .failure(let error): handler(error)
                 }
             }
 
@@ -176,14 +178,14 @@ final class NIOWebSocket: INIOWebSocket {
         closeCode = code
 
         let codeAsInt = UInt16(webSocketErrorCode: code)
-        let codeToSend: WebSocketErrorCode
-        if codeAsInt == 1005 || codeAsInt == 1006 {
-            /// Code 1005 and 1006 are used to report errors to the application, but must never be sent over
-            /// the wire (per https://tools.ietf.org/html/rfc6455#section-7.4)
-            codeToSend = .normalClosure
-        } else {
-            codeToSend = code
-        }
+        let codeToSend: WebSocketErrorCode =
+            if codeAsInt == 1005 || codeAsInt == 1006 {
+                /// Code 1005 and 1006 are used to report errors to the application, but must never be sent over
+                /// the wire (per https://tools.ietf.org/html/rfc6455#section-7.4)
+                .normalClosure
+            } else {
+                code
+            }
 
         var buffer = channel.allocator.buffer(capacity: 2)
         buffer.write(webSocketErrorCode: codeToSend)
@@ -199,6 +201,7 @@ final class NIOWebSocket: INIOWebSocket {
                 bytes.append(.random(in: .min ..< .max))
             }
             return WebSocketMaskingKey(bytes)
+
         case .server:
             return nil
         }
@@ -226,6 +229,7 @@ final class NIOWebSocket: INIOWebSocket {
                     self.channel.close(mode: .output, promise: nil)
                 }
             }
+
         case .ping:
             if frame.fin {
                 var frameData = frame.data
@@ -242,17 +246,19 @@ final class NIOWebSocket: INIOWebSocket {
             } else {
                 close(code: .protocolError, promise: nil)
             }
+
         case .text, .binary, .pong:
             // create a new frame sequence or use existing
-            var frameSequence: WebSocketFrameSequence
-            if let existing = self.frameSequence {
-                frameSequence = existing
-            } else {
-                frameSequence = WebSocketFrameSequence(type: frame.opcode)
-            }
+            var frameSequence: WebSocketFrameSequence =
+                if let existing = self.frameSequence {
+                    existing
+                } else {
+                    WebSocketFrameSequence(type: frame.opcode)
+                }
             // append this frame and update the sequence
             frameSequence.append(frame)
             self.frameSequence = frameSequence
+
         case .continuation:
             // we must have an existing sequence
             if var frameSequence {
@@ -262,6 +268,7 @@ final class NIOWebSocket: INIOWebSocket {
             } else {
                 close(code: .protocolError, promise: nil)
             }
+
         default:
             // We ignore all other frames.
             break
@@ -273,13 +280,17 @@ final class NIOWebSocket: INIOWebSocket {
             switch frameSequence.type {
             case .binary:
                 onBinaryCallback(self, frameSequence.binaryBuffer)
+
             case .text:
                 onTextCallback(self, frameSequence.textBuffer)
+
             case .pong:
                 waitingForPong = false
                 onPongCallback(self)
+
             case .ping:
                 onPingCallback(self)
+
             default: break
             }
             self.frameSequence = nil
@@ -313,11 +324,15 @@ final class NIOWebSocket: INIOWebSocket {
     }
 }
 
+// MARK: WebSocketErrorHandlerDelegate
+
 extension NIOWebSocket: WebSocketErrorHandlerDelegate {
     func onError(error: NIOWebSocketError) {
         onErrorCallback(error)
     }
 }
+
+// MARK: - WebSocketFrameSequence
 
 private struct WebSocketFrameSequence {
     var binaryBuffer: ByteBuffer
@@ -335,10 +350,12 @@ private struct WebSocketFrameSequence {
         switch type {
         case .binary:
             binaryBuffer.writeBuffer(&data)
+
         case .text:
             if let string = data.readString(length: data.readableBytes) {
                 textBuffer += string
             }
+
         default: break
         }
     }
@@ -371,11 +388,11 @@ extension NIOWebSocket {
         on eventLoopGroup: EventLoopGroup,
         onUpgrade: @escaping (NIOWebSocket) -> Void
     ) -> EventLoopFuture<Void> {
-        let scheme: String
-        switch url.scheme {
-        case "wss", "https": scheme = "wss"
-        default: scheme = "ws"
-        }
+        let scheme =
+            switch url.scheme {
+            case "wss", "https": "wss"
+            default: "ws"
+            }
         return connect(
             scheme: scheme,
             host: url.host ?? "localhost",

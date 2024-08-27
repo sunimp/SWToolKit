@@ -10,6 +10,8 @@ import Foundation
 import NIO
 import NIOWebSocket
 
+// MARK: - WebSocketState
+
 public enum WebSocketState {
     case connecting
     case connected
@@ -27,10 +29,14 @@ public enum WebSocketState {
     }
 }
 
+// MARK: - WebSocketStateError
+
 public enum WebSocketStateError: Error {
     case connecting
     case couldNotConnect
 }
+
+// MARK: - IWebSocket
 
 public protocol IWebSocket: AnyObject {
     var delegate: IWebSocketDelegate? { get set }
@@ -44,6 +50,8 @@ public protocol IWebSocket: AnyObject {
     func send(pong: Data) throws
 }
 
+// MARK: - INIOWebSocket
+
 protocol INIOWebSocket: AnyObject {
     var onClose: EventLoopFuture<Void> { get }
     var pingInterval: TimeAmount? { get set }
@@ -54,9 +62,12 @@ protocol INIOWebSocket: AnyObject {
     func onPing(_ callback: @escaping (NIOWebSocket) -> Void)
     func onError(_ callback: @escaping (NIOWebSocketError) -> Void)
     func sendPing(promise: EventLoopPromise<Void>?)
-    func send<Data>(raw data: Data, opcode: WebSocketOpcode, fin: Bool, completionHandler: ((Error?) -> Void)?) where Data: DataProtocol
+    func send<Data>(raw data: Data, opcode: WebSocketOpcode, fin: Bool, completionHandler: ((Error?) -> Void)?)
+        where Data: DataProtocol
     func close(code: WebSocketErrorCode) -> EventLoopFuture<Void>
 }
+
+// MARK: - IWebSocketDelegate
 
 public protocol IWebSocketDelegate: AnyObject {
     func didUpdate(state: WebSocketState)

@@ -7,9 +7,13 @@
 
 import Foundation
 
+// MARK: - ILogStorage
+
 public protocol ILogStorage {
     func log(date: Date, level: Logger.Level, message: String, file: String?, function: String?, line: Int?, context: [String]?)
 }
+
+// MARK: - Logger
 
 public class Logger {
     public enum Level: Int {
@@ -60,44 +64,75 @@ public class Logger {
     }
 
     /// log something generally unimportant (lowest priority)
-    public func verbose(_ message: @autoclosure () -> Any,
-                        _ file: String? = nil, _ function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false)
-    {
+    public func verbose(
+        _ message: @autoclosure () -> Any,
+        _ file: String? = nil,
+        _ function: String? = nil,
+        line: Int? = nil,
+        context: [String]? = nil,
+        save: Bool = false
+    ) {
         log(level: .verbose, message: message(), file: file, function: function, line: line, context: context, save: save)
     }
 
     /// log something which help during debugging (low priority)
-    public func debug(_ message: @autoclosure () -> Any,
-                      _ file: String? = nil, _ function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false)
-    {
+    public func debug(
+        _ message: @autoclosure () -> Any,
+        _ file: String? = nil,
+        _ function: String? = nil,
+        line: Int? = nil,
+        context: [String]? = nil,
+        save: Bool = false
+    ) {
         log(level: .debug, message: message(), file: file, function: function, line: line, context: context, save: save)
     }
 
     /// log something which you are really interested but which is not an issue or error (normal priority)
-    public func info(_ message: @autoclosure () -> Any,
-                     _ file: String? = nil, _ function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false)
-    {
+    public func info(
+        _ message: @autoclosure () -> Any,
+        _ file: String? = nil,
+        _ function: String? = nil,
+        line: Int? = nil,
+        context: [String]? = nil,
+        save: Bool = false
+    ) {
         log(level: .info, message: message(), file: file, function: function, line: line, context: context, save: save)
     }
 
     /// log something which may cause big trouble soon (high priority)
-    public func warning(_ message: @autoclosure () -> Any,
-                        _ file: String? = nil, _ function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false)
-    {
+    public func warning(
+        _ message: @autoclosure () -> Any,
+        _ file: String? = nil,
+        _ function: String? = nil,
+        line: Int? = nil,
+        context: [String]? = nil,
+        save: Bool = false
+    ) {
         log(level: .warning, message: message(), file: file, function: function, line: line, context: context, save: save)
     }
 
     /// log something which will keep you awake at night (highest priority)
-    public func error(_ message: @autoclosure () -> Any,
-                      _ file: String? = nil, _ function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false)
-    {
+    public func error(
+        _ message: @autoclosure () -> Any,
+        _ file: String? = nil,
+        _ function: String? = nil,
+        line: Int? = nil,
+        context: [String]? = nil,
+        save: Bool = false
+    ) {
         log(level: .error, message: message(), file: file, function: function, line: line, context: context, save: save)
     }
 
     /// custom logging to manually adjust values, should just be used by other frameworks
-    public func log(level: Logger.Level, message: @autoclosure () -> Any,
-                    file: String? = nil, function: String? = nil, line: Int? = nil, context: [String]? = nil, save: Bool = false)
-    {
+    public func log(
+        level: Logger.Level,
+        message: @autoclosure () -> Any,
+        file: String? = nil,
+        function: String? = nil,
+        line: Int? = nil,
+        context: [String]? = nil,
+        save: Bool = false
+    ) {
         if let delegate {
             var scopedContext = context ?? [String]()
             if let scope {
@@ -105,12 +140,28 @@ public class Logger {
             }
 
             let resolvedMessage = message()
-            delegate.log(level: level, message: resolvedMessage, file: file, function: function, line: line, context: scopedContext, save: save)
+            delegate.log(
+                level: level,
+                message: resolvedMessage,
+                file: file,
+                function: function,
+                line: line,
+                context: scopedContext,
+                save: save
+            )
             return
         }
 
         if let storage, save {
-            storage.log(date: Date(), level: level, message: "\(message())", file: file, function: function, line: line, context: context)
+            storage.log(
+                date: Date(),
+                level: level,
+                message: "\(message())",
+                file: file,
+                function: function,
+                line: line,
+                context: context
+            )
         }
 
         guard level.rawValue >= minLogLevel.rawValue else {
@@ -142,13 +193,13 @@ public class Logger {
 
     private func functionName(_ function: String) -> String {
         if let index = function.firstIndex(of: "(") {
-            return String(function.prefix(index.utf16Offset(in: function)))
+            String(function.prefix(index.utf16Offset(in: function)))
         } else {
-            return function
+            function
         }
     }
 
-    // returns the current thread name
+    /// returns the current thread name
     private func threadName() -> String {
         if Thread.isMainThread {
             return ""
@@ -162,7 +213,7 @@ public class Logger {
         }
     }
 
-    // returns the filename without suffix (= file ending) of a path
+    /// returns the filename without suffix (= file ending) of a path
     private func fileNameWithoutSuffix(_ file: String) -> String {
         let fileName = fileNameOfFile(file)
 
@@ -175,7 +226,7 @@ public class Logger {
         return ""
     }
 
-    // returns the filename of a path
+    /// returns the filename of a path
     private func fileNameOfFile(_ file: String) -> String {
         let fileParts = file.components(separatedBy: "/")
         if let lastPart = fileParts.last {

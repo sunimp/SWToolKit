@@ -7,12 +7,12 @@
 
 import Foundation
 
+import Atomics
 import NIO
 import NIOConcurrencyHelpers
 import NIOHTTP1
 import NIOSSL
 import NIOWebSocket
-import Atomics
 
 final class WebSocketClient {
     enum Error: Swift.Error, LocalizedError {
@@ -30,7 +30,7 @@ final class WebSocketClient {
     }
 
     struct Configuration {
-        var tlsConfiguration: TLSConfiguration?
+        var tlsConfiguration: TLSConfiguration? = nil
         var maxFrameSize: Int
 
         init(
@@ -50,7 +50,7 @@ final class WebSocketClient {
     init(eventLoopGroupProvider: EventLoopGroupProvider, configuration: Configuration = .init()) {
         self.eventLoopGroupProvider = eventLoopGroupProvider
         switch self.eventLoopGroupProvider {
-        case let .shared(group):
+        case .shared(let group):
             self.group = group
         case .createNew:
             group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
@@ -106,7 +106,10 @@ final class WebSocketClient {
                         )
                         let tlsHandler = try NIOSSLClientHandler(context: context, serverHostname: host)
                         return channel.pipeline.addHandler(tlsHandler).flatMap {
-                            channel.pipeline.addHTTPClientHandlers(leftOverBytesStrategy: .forwardBytes, withClientUpgrade: config)
+                            channel.pipeline.addHTTPClientHandlers(
+                                leftOverBytesStrategy: .forwardBytes,
+                                withClientUpgrade: config
+                            )
                         }.flatMap {
                             channel.pipeline.addHandler(httpHandler)
                         }
