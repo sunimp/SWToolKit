@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "D94502F4261F98A400F6BF2E"
-               BuildableName = "iOS Example.app"
+               BuildableName = "WWToolKit-Example.app"
                BlueprintName = "iOS Example"
                ReferencedContainer = "container:iOS Example.xcodeproj">
             </BuildableReference>
@@ -45,7 +45,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "D94502F4261F98A400F6BF2E"
-            BuildableName = "iOS Example.app"
+            BuildableName = "WWToolKit-Example.app"
             BlueprintName = "iOS Example"
             ReferencedContainer = "container:iOS Example.xcodeproj">
          </BuildableReference>
@@ -62,7 +62,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "D94502F4261F98A400F6BF2E"
-            BuildableName = "iOS Example.app"
+            BuildableName = "WWToolKit-Example.app"
             BlueprintName = "iOS Example"
             ReferencedContainer = "container:iOS Example.xcodeproj">
          </BuildableReference>

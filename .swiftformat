@@ -101,7 +101,6 @@
 --rules semicolons
 --rules blankLinesBetweenChainedFunctions
 --rules isEmpty
---rules acronyms
 --rules modifierOrder
 --rules spaceAroundOperators
 --rules assertionFailures
