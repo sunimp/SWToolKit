@@ -17,10 +17,10 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/Alamofire/Alamofire.git", .upToNextMajor(from: "5.9.1")),
         .package(url: "https://github.com/tristanhimmelman/ObjectMapper.git", .upToNextMajor(from: "4.4.3")),
-        .package(url: "https://github.com/apple/swift-nio-ssl.git", .upToNextMajor(from: "2.27.1")),
-        .package(url: "https://github.com/apple/swift-nio.git", .upToNextMajor(from: "2.27.0")),
-        .package(url: "https://github.com/sunimp/WWExtensions.Swift.git", .upToNextMajor(from: "1.1.1")),
-        .package(url: "https://github.com/nicklockwood/SwiftFormat.git", from: "0.54.0"),
+        .package(url: "https://github.com/apple/swift-nio-ssl.git", .upToNextMajor(from: "2.27.2")),
+        .package(url: "https://github.com/apple/swift-nio.git", .upToNextMajor(from: "2.70.0")),
+        .package(url: "https://github.com/sunimp/WWExtensions.Swift.git", .upToNextMajor(from: "1.2.0")),
+        .package(url: "https://github.com/nicklockwood/SwiftFormat.git", from: "0.54.3"),
     ],
     targets: [
         .target(

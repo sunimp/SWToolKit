@@ -4,6 +4,10 @@ NetworkManager, Logger
 
 ## Requirements
 
+* Xcode 15.4+
+* Swift 5.10+
+* iOS 14.0+
+
 ## Installation
 
 ### Swift Package Manager
@@ -17,7 +21,7 @@ the `dependencies` value of your `Package.swift`.
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/sunimp/WWToolKit.Swift.git", .upToNextMajor(from: "2.1.2"))
+    .package(url: "https://github.com/sunimp/WWToolKit.Swift.git", .upToNextMajor(from: "2.2.0"))
 ]
 ```
 

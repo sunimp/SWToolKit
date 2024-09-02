@@ -1,8 +1,7 @@
 //
 //  WebSocketClient.swift
-//  WWToolKit
 //
-//  Created by Sun on 2024/8/21.
+//  Created by Sun on 2022/1/20.
 //
 
 import Foundation
@@ -15,10 +14,15 @@ import NIOSSL
 import NIOWebSocket
 
 final class WebSocketClient {
+    // MARK: Nested Types
+
     enum Error: Swift.Error, LocalizedError {
         case invalidURL
         case invalidResponseStatus(HTTPResponseHead)
         case alreadyShutdown
+
+        // MARK: Computed Properties
+
         var errorDescription: String? {
             "\(self)"
         }
@@ -30,8 +34,12 @@ final class WebSocketClient {
     }
 
     struct Configuration {
-        var tlsConfiguration: TLSConfiguration? = nil
+        // MARK: Properties
+
+        var tlsConfiguration: TLSConfiguration?
         var maxFrameSize: Int
+
+        // MARK: Lifecycle
 
         init(
             tlsConfiguration: TLSConfiguration? = nil,
@@ -42,21 +50,36 @@ final class WebSocketClient {
         }
     }
 
+    // MARK: Properties
+
     let eventLoopGroupProvider: EventLoopGroupProvider
     let group: EventLoopGroup
     let configuration: Configuration
     let isShutdown = ManagedAtomic<Bool>(false)
 
+    // MARK: Lifecycle
+
     init(eventLoopGroupProvider: EventLoopGroupProvider, configuration: Configuration = .init()) {
         self.eventLoopGroupProvider = eventLoopGroupProvider
         switch self.eventLoopGroupProvider {
-        case .shared(let group):
+        case let .shared(group):
             self.group = group
         case .createNew:
             group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         }
         self.configuration = configuration
     }
+
+    deinit {
+        switch eventLoopGroupProvider {
+        case .shared:
+            return
+        case .createNew:
+            assert(isShutdown.load(ordering: .sequentiallyConsistent), "WebSocketClient not shutdown before deinit.")
+        }
+    }
+
+    // MARK: Functions
 
     func connect(
         scheme: String,
@@ -65,7 +88,8 @@ final class WebSocketClient {
         path: String = "/",
         headers: HTTPHeaders = [:],
         onUpgrade: @escaping (NIOWebSocket) -> Void
-    ) -> EventLoopFuture<Void> {
+    )
+        -> EventLoopFuture<Void> {
         assert(["ws", "wss"].contains(scheme))
         let upgradePromise = group.next().makePromise(of: Void.self)
         let bootstrap = ClientBootstrap(group: group)
@@ -138,21 +162,16 @@ final class WebSocketClient {
         case .shared:
             return
         case .createNew:
-            let (exchanged, _) = isShutdown.compareExchange(expected: false, desired: true, ordering: .sequentiallyConsistent)
+            let (exchanged, _) = isShutdown.compareExchange(
+                expected: false,
+                desired: true,
+                ordering: .sequentiallyConsistent
+            )
             if exchanged {
                 try group.syncShutdownGracefully()
             } else {
                 throw WebSocketClient.Error.alreadyShutdown
             }
-        }
-    }
-
-    deinit {
-        switch eventLoopGroupProvider {
-        case .shared:
-            return
-        case .createNew:
-            assert(isShutdown.load(ordering: .sequentiallyConsistent), "WebSocketClient not shutdown before deinit.")
         }
     }
 }

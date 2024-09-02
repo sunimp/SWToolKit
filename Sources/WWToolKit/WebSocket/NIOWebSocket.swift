@@ -1,8 +1,7 @@
 //
 //  NIOWebSocket.swift
-//  WWToolKit
 //
-//  Created by Sun on 2024/8/21.
+//  Created by Sun on 2022/1/20.
 //
 
 import Foundation
@@ -16,24 +15,16 @@ import NIOWebSocket
 // MARK: - NIOWebSocket
 
 final class NIOWebSocket: INIOWebSocket {
+    // MARK: Nested Types
+
     enum PeerType {
         case server
         case client
     }
 
-    var eventLoop: EventLoop {
-        channel.eventLoop
-    }
-
-    var isClosed: Bool {
-        !channel.isActive
-    }
+    // MARK: Properties
 
     private(set) var closeCode: WebSocketErrorCode?
-
-    var onClose: EventLoopFuture<Void> {
-        channel.closeFuture
-    }
 
     var waitingForClose: Bool
 
@@ -48,37 +39,18 @@ final class NIOWebSocket: INIOWebSocket {
     private var waitingForPong: Bool
     private var scheduledTimeoutTask: Scheduled<Void>?
 
-    init(channel: Channel, type: PeerType) {
-        self.channel = channel
-        self.type = type
-        onTextCallback = { _, _ in }
-        onBinaryCallback = { _, _ in }
-        onPongCallback = { _ in }
-        onPingCallback = { _ in }
-        onErrorCallback = { _ in }
-        waitingForPong = false
-        waitingForClose = false
-        scheduledTimeoutTask = nil
+    // MARK: Computed Properties
+
+    var eventLoop: EventLoop {
+        channel.eventLoop
     }
 
-    func onText(_ callback: @escaping (NIOWebSocket, String) -> Void) {
-        onTextCallback = callback
+    var isClosed: Bool {
+        !channel.isActive
     }
 
-    func onBinary(_ callback: @escaping (NIOWebSocket, ByteBuffer) -> Void) {
-        onBinaryCallback = callback
-    }
-
-    func onPong(_ callback: @escaping (NIOWebSocket) -> Void) {
-        onPongCallback = callback
-    }
-
-    func onPing(_ callback: @escaping (NIOWebSocket) -> Void) {
-        onPingCallback = callback
-    }
-
-    func onError(_ callback: @escaping (NIOWebSocketError) -> Void) {
-        onErrorCallback = callback
+    var onClose: EventLoopFuture<Void> {
+        channel.closeFuture
     }
 
     /// If set, this will trigger automatic pings on the connection. If ping is not answered before
@@ -100,47 +72,41 @@ final class NIOWebSocket: INIOWebSocket {
         }
     }
 
-    private func send(_ text: some Collection<Character>, promise: EventLoopPromise<Void>? = nil) {
-        let string = String(text)
-        var buffer = channel.allocator.buffer(capacity: text.count)
-        buffer.writeString(string)
-        send(raw: buffer.readableBytesView, opcode: .text, fin: true, promise: promise)
+    // MARK: Lifecycle
+
+    init(channel: Channel, type: PeerType) {
+        self.channel = channel
+        self.type = type
+        onTextCallback = { _, _ in }
+        onBinaryCallback = { _, _ in }
+        onPongCallback = { _ in }
+        onPingCallback = { _ in }
+        onErrorCallback = { _ in }
+        waitingForPong = false
+        waitingForClose = false
+        scheduledTimeoutTask = nil
     }
 
-    private func send(_ binary: [UInt8], promise: EventLoopPromise<Void>? = nil) {
-        send(raw: binary, opcode: .binary, fin: true, promise: promise)
+    // MARK: Functions
+
+    func onText(_ callback: @escaping (NIOWebSocket, String) -> Void) {
+        onTextCallback = callback
     }
 
-    private func convertToPromise(completionHandler: ((Error?) -> Void)?) -> EventLoopPromise<Void>? {
-        completionHandler.flatMap { handler in
-            let promise: EventLoopPromise<Void> = channel.eventLoop.makePromise()
-            promise.futureResult.whenComplete { result in
-                switch result {
-                case .success: handler(nil)
-                case .failure(let error): handler(error)
-                }
-            }
-
-            return promise
-        }
+    func onBinary(_ callback: @escaping (NIOWebSocket, ByteBuffer) -> Void) {
+        onBinaryCallback = callback
     }
 
-    private func send(
-        raw data: some DataProtocol,
-        opcode: WebSocketOpcode,
-        fin: Bool = true,
-        promise: EventLoopPromise<Void>? = nil
-    ) {
-        var buffer = channel.allocator.buffer(capacity: data.count)
-        buffer.writeBytes(data)
-        let frame = WebSocketFrame(
-            fin: fin,
-            opcode: opcode,
-            maskKey: makeMaskKey(),
-            data: buffer
-        )
+    func onPong(_ callback: @escaping (NIOWebSocket) -> Void) {
+        onPongCallback = callback
+    }
 
-        channel.writeAndFlush(frame, promise: promise)
+    func onPing(_ callback: @escaping (NIOWebSocket) -> Void) {
+        onPingCallback = callback
+    }
+
+    func onError(_ callback: @escaping (NIOWebSocketError) -> Void) {
+        onErrorCallback = callback
     }
 
     func sendPing(promise: EventLoopPromise<Void>? = nil) {
@@ -247,7 +213,9 @@ final class NIOWebSocket: INIOWebSocket {
                 close(code: .protocolError, promise: nil)
             }
 
-        case .text, .binary, .pong:
+        case .text,
+             .binary,
+             .pong:
             // create a new frame sequence or use existing
             var frameSequence: WebSocketFrameSequence =
                 if let existing = self.frameSequence {
@@ -297,6 +265,49 @@ final class NIOWebSocket: INIOWebSocket {
         }
     }
 
+    private func send(_ text: some Collection<Character>, promise: EventLoopPromise<Void>? = nil) {
+        let string = String(text)
+        var buffer = channel.allocator.buffer(capacity: text.count)
+        buffer.writeString(string)
+        send(raw: buffer.readableBytesView, opcode: .text, fin: true, promise: promise)
+    }
+
+    private func send(_ binary: [UInt8], promise: EventLoopPromise<Void>? = nil) {
+        send(raw: binary, opcode: .binary, fin: true, promise: promise)
+    }
+
+    private func convertToPromise(completionHandler: ((Error?) -> Void)?) -> EventLoopPromise<Void>? {
+        completionHandler.flatMap { handler in
+            let promise: EventLoopPromise<Void> = channel.eventLoop.makePromise()
+            promise.futureResult.whenComplete { result in
+                switch result {
+                case .success: handler(nil)
+                case let .failure(error): handler(error)
+                }
+            }
+
+            return promise
+        }
+    }
+
+    private func send(
+        raw data: some DataProtocol,
+        opcode: WebSocketOpcode,
+        fin: Bool = true,
+        promise: EventLoopPromise<Void>? = nil
+    ) {
+        var buffer = channel.allocator.buffer(capacity: data.count)
+        buffer.writeBytes(data)
+        let frame = WebSocketFrame(
+            fin: fin,
+            opcode: opcode,
+            maskKey: makeMaskKey(),
+            data: buffer
+        )
+
+        channel.writeAndFlush(frame, promise: promise)
+    }
+
     private func pingAndScheduleNextTimeoutTask() {
         guard channel.isActive, let pingInterval else {
             return
@@ -335,15 +346,21 @@ extension NIOWebSocket: WebSocketErrorHandlerDelegate {
 // MARK: - WebSocketFrameSequence
 
 private struct WebSocketFrameSequence {
+    // MARK: Properties
+
     var binaryBuffer: ByteBuffer
     var textBuffer: String
     var type: WebSocketOpcode
+
+    // MARK: Lifecycle
 
     init(type: WebSocketOpcode) {
         binaryBuffer = ByteBufferAllocator().buffer(capacity: 0)
         textBuffer = .init()
         self.type = type
     }
+
+    // MARK: Functions
 
     mutating func append(_ frame: WebSocketFrame) {
         var data = frame.unmaskedData
@@ -368,7 +385,8 @@ extension NIOWebSocket {
         configuration: WebSocketClient.Configuration = .init(),
         on eventLoopGroup: EventLoopGroup,
         onUpgrade: @escaping (NIOWebSocket) -> Void
-    ) -> EventLoopFuture<Void> {
+    )
+        -> EventLoopFuture<Void> {
         guard let url = URL(string: url) else {
             return eventLoopGroup.next().makeFailedFuture(WebSocketClient.Error.invalidURL)
         }
@@ -387,10 +405,12 @@ extension NIOWebSocket {
         configuration: WebSocketClient.Configuration = .init(),
         on eventLoopGroup: EventLoopGroup,
         onUpgrade: @escaping (NIOWebSocket) -> Void
-    ) -> EventLoopFuture<Void> {
+    )
+        -> EventLoopFuture<Void> {
         let scheme =
             switch url.scheme {
-            case "wss", "https": "wss"
+            case "wss",
+                 "https": "wss"
             default: "ws"
             }
         return connect(
@@ -414,7 +434,8 @@ extension NIOWebSocket {
         configuration: WebSocketClient.Configuration = .init(),
         on eventLoopGroup: EventLoopGroup,
         onUpgrade: @escaping (NIOWebSocket) -> Void
-    ) -> EventLoopFuture<Void> {
+    )
+        -> EventLoopFuture<Void> {
         WebSocketClient(
             eventLoopGroupProvider: .shared(eventLoopGroup),
             configuration: configuration

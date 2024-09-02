@@ -1,8 +1,7 @@
 //
-//  NIOWebSocket.swift
-//  WWToolKit
+//  WebSocketHandler.swift
 //
-//  Created by Sun on 2024/8/21.
+//  Created by Sun on 2022/1/20.
 //
 
 import Foundation
@@ -14,14 +13,16 @@ extension NIOWebSocket {
     static func client(
         on channel: Channel,
         onUpgrade: @escaping (NIOWebSocket) -> Void
-    ) -> EventLoopFuture<Void> {
+    )
+        -> EventLoopFuture<Void> {
         handle(on: channel, as: .client, onUpgrade: onUpgrade)
     }
 
     static func server(
         on channel: Channel,
         onUpgrade: @escaping (NIOWebSocket) -> Void
-    ) -> EventLoopFuture<Void> {
+    )
+        -> EventLoopFuture<Void> {
         handle(on: channel, as: .server, onUpgrade: onUpgrade)
     }
 
@@ -29,7 +30,8 @@ extension NIOWebSocket {
         on channel: Channel,
         as type: PeerType,
         onUpgrade: @escaping (NIOWebSocket) -> Void
-    ) -> EventLoopFuture<Void> {
+    )
+        -> EventLoopFuture<Void> {
         let webSocket = NIOWebSocket(channel: channel, type: type)
         _ = channel.pipeline.addHandler(WebSocketErrorHandler(delegate: webSocket))
 
@@ -54,13 +56,22 @@ extension WebSocketErrorCode {
 // MARK: - WebSocketHandler
 
 private final class WebSocketHandler: ChannelInboundHandler {
+    // MARK: Nested Types
+
     typealias InboundIn = WebSocketFrame
     typealias OutboundOut = WebSocketFrame
+
+    // MARK: Properties
+
     private var webSocket: NIOWebSocket
+
+    // MARK: Lifecycle
 
     init(webSocket: NIOWebSocket) {
         self.webSocket = webSocket
     }
+
+    // MARK: Functions
 
     func channelRead(context _: ChannelHandlerContext, data: NIOAny) {
         let frame = unwrapInboundIn(data)

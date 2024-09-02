@@ -1,8 +1,7 @@
 //
 //  ReachabilityManager.swift
-//  WWToolKit
 //
-//  Created by Sun on 2024/8/21.
+//  Created by Sun on 2022/1/20.
 //
 
 import Combine
@@ -14,13 +13,24 @@ import WWExtensions
 // MARK: - ReachabilityManager
 
 public class ReachabilityManager {
-    private let manager: NetworkReachabilityManager?
+    // MARK: Properties
 
     @DistinctPublished
     public private(set) var isReachable = false
+
+    private let manager: NetworkReachabilityManager?
+
     private let connectionTypeChangedSubject = PassthroughSubject<Void, Never>()
 
-    private var lastConnectionType: NetworkReachabilityManager.NetworkReachabilityStatus.ConnectionType? = nil
+    private var lastConnectionType: NetworkReachabilityManager.NetworkReachabilityStatus.ConnectionType?
+
+    // MARK: Computed Properties
+
+    public var connectionTypeChangedPublisher: AnyPublisher<Void, Never> {
+        connectionTypeChangedSubject.eraseToAnyPublisher()
+    }
+
+    // MARK: Lifecycle
 
     public init() {
         manager = NetworkReachabilityManager()
@@ -34,9 +44,11 @@ public class ReachabilityManager {
         }
     }
 
+    // MARK: Functions
+
     private func onUpdate(status: NetworkReachabilityManager.NetworkReachabilityStatus) {
         switch status {
-        case .reachable(let connectionType):
+        case let .reachable(connectionType):
             isReachable = true
 
             if let lastConnectionType, connectionType != lastConnectionType {
@@ -49,10 +61,6 @@ public class ReachabilityManager {
             isReachable = false
             lastConnectionType = nil
         }
-    }
-
-    public var connectionTypeChangedPublisher: AnyPublisher<Void, Never> {
-        connectionTypeChangedSubject.eraseToAnyPublisher()
     }
 }
 

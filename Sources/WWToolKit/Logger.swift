@@ -1,8 +1,7 @@
 //
 //  Logger.swift
-//  WWToolKit
 //
-//  Created by Sun on 2024/8/21.
+//  Created by Sun on 2022/1/20.
 //
 
 import Foundation
@@ -10,12 +9,22 @@ import Foundation
 // MARK: - ILogStorage
 
 public protocol ILogStorage {
-    func log(date: Date, level: Logger.Level, message: String, file: String?, function: String?, line: Int?, context: [String]?)
+    func log(
+        date: Date,
+        level: Logger.Level,
+        message: String,
+        file: String?,
+        function: String?,
+        line: Int?,
+        context: [String]?
+    )
 }
 
 // MARK: - Logger
 
 public class Logger {
+    // MARK: Nested Types
+
     public enum Level: Int {
         case verbose = 0
         case debug = 1
@@ -23,6 +32,8 @@ public class Logger {
         case warning = 3
         case error = 4
     }
+
+    // MARK: Properties
 
     private let colors: [Level: String] = [
         Level.verbose: "💜 VERBOSE ", // silver
@@ -45,6 +56,8 @@ public class Logger {
     private let scope: String?
     private let delegate: Logger?
 
+    // MARK: Lifecycle
+
     public init(minLogLevel: Level, storage: ILogStorage? = nil) {
         self.minLogLevel = minLogLevel
         self.storage = storage
@@ -59,6 +72,8 @@ public class Logger {
         self.delegate = delegate
     }
 
+    // MARK: Functions
+
     public func scoped(with scope: String) -> Logger {
         Logger(minLogLevel: minLogLevel, scope: scope, delegate: self)
     }
@@ -72,7 +87,15 @@ public class Logger {
         context: [String]? = nil,
         save: Bool = false
     ) {
-        log(level: .verbose, message: message(), file: file, function: function, line: line, context: context, save: save)
+        log(
+            level: .verbose,
+            message: message(),
+            file: file,
+            function: function,
+            line: line,
+            context: context,
+            save: save
+        )
     }
 
     /// log something which help during debugging (low priority)
@@ -108,7 +131,15 @@ public class Logger {
         context: [String]? = nil,
         save: Bool = false
     ) {
-        log(level: .warning, message: message(), file: file, function: function, line: line, context: context, save: save)
+        log(
+            level: .warning,
+            message: message(),
+            file: file,
+            function: function,
+            line: line,
+            context: context,
+            save: save
+        )
     }
 
     /// log something which will keep you awake at night (highest priority)

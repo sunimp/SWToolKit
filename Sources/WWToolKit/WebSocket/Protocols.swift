@@ -1,8 +1,7 @@
 //
 //  Protocols.swift
-//  WWToolKit
 //
-//  Created by Sun on 2024/8/21.
+//  Created by Sun on 2022/1/20.
 //
 
 import Foundation
@@ -16,6 +15,8 @@ public enum WebSocketState {
     case connecting
     case connected
     case disconnected(error: Error)
+
+    // MARK: Nested Types
 
     public enum DisconnectError: Error {
         case notStarted

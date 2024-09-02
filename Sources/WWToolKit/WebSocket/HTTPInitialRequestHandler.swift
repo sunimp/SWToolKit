@@ -1,8 +1,7 @@
 //
 //  HTTPInitialRequestHandler.swift
-//  WWToolKit
 //
-//  Created by Sun on 2024/8/21.
+//  Created by Sun on 2022/1/20.
 //
 
 import Foundation
@@ -11,13 +10,19 @@ import NIO
 import NIOHTTP1
 
 final class HTTPInitialRequestHandler: ChannelInboundHandler, RemovableChannelHandler {
+    // MARK: Nested Types
+
     typealias InboundIn = HTTPClientResponsePart
     typealias OutboundOut = HTTPClientRequestPart
+
+    // MARK: Properties
 
     let host: String
     let path: String
     let headers: HTTPHeaders
     let upgradePromise: EventLoopPromise<Void>
+
+    // MARK: Lifecycle
 
     init(host: String, path: String, headers: HTTPHeaders, upgradePromise: EventLoopPromise<Void>) {
         self.host = host
@@ -25,6 +30,8 @@ final class HTTPInitialRequestHandler: ChannelInboundHandler, RemovableChannelHa
         self.headers = headers
         self.upgradePromise = upgradePromise
     }
+
+    // MARK: Functions
 
     func channelActive(context: ChannelHandlerContext) {
         var headers = headers
@@ -50,7 +57,7 @@ final class HTTPInitialRequestHandler: ChannelInboundHandler, RemovableChannelHa
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let clientResponse = unwrapInboundIn(data)
         switch clientResponse {
-        case .head(let responseHead):
+        case let .head(responseHead):
             upgradePromise.fail(WebSocketClient.Error.invalidResponseStatus(responseHead))
         case .body: break
         case .end:

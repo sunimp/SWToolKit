@@ -1,8 +1,7 @@
 //
 //  NetworkManager+ObjectMapper.swift
-//  WWToolKit
 //
-//  Created by Sun on 2024/8/21.
+//  Created by Sun on 2022/1/20.
 //
 
 import Foundation
@@ -17,9 +16,11 @@ extension NetworkManager {
         headers: HTTPHeaders? = nil, interceptor: RequestInterceptor? = nil,
         responseCacherBehavior: ResponseCacher.Behavior? = nil,
         context: MapContext? = nil
-    ) async throws -> T {
+    ) async throws
+        -> T {
         let json = try await fetchJson(
-            url: url, method: method, parameters: parameters, encoding: encoding, headers: headers, interceptor: interceptor,
+            url: url, method: method, parameters: parameters, encoding: encoding, headers: headers,
+            interceptor: interceptor,
             responseCacherBehavior: responseCacherBehavior
         )
 
@@ -32,9 +33,11 @@ extension NetworkManager {
         headers: HTTPHeaders? = nil, interceptor: RequestInterceptor? = nil,
         responseCacherBehavior: ResponseCacher.Behavior? = nil,
         context: MapContext? = nil
-    ) async throws -> [T] {
+    ) async throws
+        -> [T] {
         let json = try await fetchJson(
-            url: url, method: method, parameters: parameters, encoding: encoding, headers: headers, interceptor: interceptor,
+            url: url, method: method, parameters: parameters, encoding: encoding, headers: headers,
+            interceptor: interceptor,
             responseCacherBehavior: responseCacherBehavior
         )
 
@@ -47,9 +50,11 @@ extension NetworkManager {
         headers: HTTPHeaders? = nil, interceptor: RequestInterceptor? = nil,
         responseCacherBehavior: ResponseCacher.Behavior? = nil,
         context: MapContext? = nil
-    ) async throws -> [String: T] {
+    ) async throws
+        -> [String: T] {
         let json = try await fetchJson(
-            url: url, method: method, parameters: parameters, encoding: encoding, headers: headers, interceptor: interceptor,
+            url: url, method: method, parameters: parameters, encoding: encoding, headers: headers,
+            interceptor: interceptor,
             responseCacherBehavior: responseCacherBehavior
         )
 

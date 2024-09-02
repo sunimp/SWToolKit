@@ -1,8 +1,7 @@
 //
 //  BackgroundModeObserver.swift
-//  WWToolKit
 //
-//  Created by Sun on 2024/8/21.
+//  Created by Sun on 2022/1/20.
 //
 
 #if os(iOS)
@@ -10,12 +9,24 @@ import Combine
 import UIKit
 
 public class BackgroundModeObserver {
+    // MARK: Static Properties
+
     public static let shared = BackgroundModeObserver()
+
+    // MARK: Properties
 
     private let foregroundFromExpiredBackgroundSubject = PassthroughSubject<Void, Never>()
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
     private var cancellables = Set<AnyCancellable>()
+
+    // MARK: Computed Properties
+
+    public var foregroundFromExpiredBackgroundPublisher: AnyPublisher<Void, Never> {
+        foregroundFromExpiredBackgroundSubject.eraseToAnyPublisher()
+    }
+
+    // MARK: Lifecycle
 
     init() {
         NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
@@ -26,6 +37,8 @@ public class BackgroundModeObserver {
             .sink { [weak self] _ in self?.appCameToForeground() }
             .store(in: &cancellables)
     }
+
+    // MARK: Functions
 
     @objc
     private func appCameToBackground() {
@@ -43,10 +56,6 @@ public class BackgroundModeObserver {
         } else {
             foregroundFromExpiredBackgroundSubject.send()
         }
-    }
-
-    public var foregroundFromExpiredBackgroundPublisher: AnyPublisher<Void, Never> {
-        foregroundFromExpiredBackgroundSubject.eraseToAnyPublisher()
     }
 }
 #endif

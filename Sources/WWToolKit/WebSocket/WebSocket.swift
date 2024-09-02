@@ -1,8 +1,7 @@
 //
 //  WebSocket.swift
-//  WWToolKit
 //
-//  Created by Sun on 2024/8/21.
+//  Created by Sun on 2022/1/20.
 //
 
 import Combine
@@ -15,6 +14,8 @@ import NIOWebSocket
 // MARK: - WebSocket
 
 public class WebSocket: NSObject {
+    // MARK: Properties
+
     public weak var delegate: IWebSocketDelegate?
 
     private var cancellables = Set<AnyCancellable>()
@@ -33,6 +34,9 @@ public class WebSocket: NSObject {
     private var isStarted = false
 
     private var _state: WebSocketState = .disconnected(error: WebSocketState.DisconnectError.notStarted)
+
+    // MARK: Computed Properties
+
     public var state: WebSocketState {
         get {
             stateQueue.sync {
@@ -48,6 +52,8 @@ public class WebSocket: NSObject {
             }
         }
     }
+
+    // MARK: Lifecycle
 
     public init(
         url: URL,
@@ -107,6 +113,8 @@ public class WebSocket: NSObject {
         eventLoopGroup?.shutdownGracefully { _ in }
     }
 
+    // MARK: Functions
+
     private func connect() {
         guard case .disconnected = state, isStarted else {
             return
@@ -141,7 +149,12 @@ public class WebSocket: NSObject {
         }
 
         let nioWebSocket = NIOWebSocket
-            .connect(to: url, headers: headers, configuration: configuration, on: _eventLoopGroup) { [weak self] webSocket in
+            .connect(
+                to: url,
+                headers: headers,
+                configuration: configuration,
+                on: _eventLoopGroup
+            ) { [weak self] webSocket in
                 self?.onConnected(webSocket: webSocket)
             }
 
@@ -203,19 +216,20 @@ public class WebSocket: NSObject {
         case .connected: ()
         case .connecting:
             throw WebSocketStateError.connecting
-        case .disconnected(let error):
+        case let .disconnected(error):
             guard let disconnectError = error as? WebSocketState.DisconnectError else {
                 throw WebSocketStateError.couldNotConnect
             }
 
-            guard case .socketDisconnected(let reason) = disconnectError else {
+            guard case let .socketDisconnected(reason) = disconnectError else {
                 throw WebSocketStateError.connecting
             }
 
             switch reason {
             case .appInBackgroundMode:
                 throw WebSocketStateError.connecting
-            case .networkNotReachable, .unexpectedServerError:
+            case .networkNotReachable,
+                 .unexpectedServerError:
                 throw WebSocketStateError.couldNotConnect
             }
         }
