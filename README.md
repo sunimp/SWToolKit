@@ -1,6 +1,6 @@
-# WWToolKit
+# SWToolKit
 
-NetworkManager, Logger
+NetworkManager, Logger, WebSocket
 
 ## Requirements
 
@@ -12,19 +12,12 @@ NetworkManager, Logger
 
 ### Swift Package Manager
 
-The [Swift Package Manager](https://swift.org/package-manager/) is a tool for automating the distribution of Swift code
-and is integrated into the `swift` compiler. It is in early development, but WWToolKit does support its use on
-supported platforms.
-
-Once you have your Swift package set up, adding WWToolKit as a dependency is as easy as adding it to
-the `dependencies` value of your `Package.swift`.
-
 ```swift
 dependencies: [
-    .package(url: "https://github.com/sunimp/WWToolKit.Swift.git", .upToNextMajor(from: "2.2.0"))
+    .package(url: "https://github.com/sunimp/SWToolKit.git", .upToNextMajor(from: "1.0.0"))
 ]
 ```
 
 ## License
 
-WWToolKit is available under the MIT license. See the LICENSE file for more info.
+SWToolKit is available under the MIT license. See the LICENSE file for more info.

@@ -1,6 +1,6 @@
 //
 //  AppDelegate.swift
-//  WWToolKit-Example
+//  SWToolKit-Example
 //
 //  Created by Sun on 2024/8/21.
 //

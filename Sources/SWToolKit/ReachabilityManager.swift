@@ -1,14 +1,15 @@
 //
 //  ReachabilityManager.swift
+//  SWToolKit
 //
-//  Created by Sun on 2022/1/20.
+//  Created by Sun on 2024/8/14.
 //
 
 import Combine
 import Foundation
 
 import Alamofire
-import WWExtensions
+import SWExtensions
 
 // MARK: - ReachabilityManager
 

@@ -1,7 +1,8 @@
 //
 //  BackgroundModeObserver.swift
+//  SWToolKit
 //
-//  Created by Sun on 2022/1/20.
+//  Created by Sun on 2024/8/14.
 //
 
 #if os(iOS)

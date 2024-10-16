@@ -1,13 +1,14 @@
 //
 //  NetworkManager.swift
+//  SWToolKit
 //
-//  Created by Sun on 2022/1/20.
+//  Created by Sun on 2024/8/14.
 //
 
 import Foundation
 
 import Alamofire
-import WWExtensions
+import SWExtensions
 
 // MARK: - NetworkManager
 
@@ -90,7 +91,7 @@ public class NetworkManager {
                     let jsonString = String(data: prettyData, encoding: .utf8) {
                     jsonString
                 } else {
-                    data.ww.hexString
+                    data.sw.hexString
                 }
             logger?.debug("API IN [\(uuid)]: \(resultLog)")
 

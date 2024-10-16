@@ -1,6 +1,6 @@
 //
 //  ViewController.swift
-//  WWToolKit-Example
+//  SWToolKit-Example
 //
 //  Created by Sun on 2024/8/21.
 //
@@ -9,7 +9,7 @@ import UIKit
 import Combine
 
 import Alamofire
-import WWToolKit
+import SWToolKit
 import ObjectMapper
 
 class ViewController: UIViewController {
